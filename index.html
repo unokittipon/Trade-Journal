@@ -28,12 +28,16 @@
 body{font-family:var(--font);background:var(--bg-tertiary);color:var(--text-primary);min-height:100vh;padding:2rem 1rem}
 .container{max-width:700px;margin:0 auto}
 h1{font-size:22px;font-weight:500;color:var(--text-primary);margin-bottom:3px}
-.sub{font-size:13px;color:var(--text-secondary);margin-bottom:1.25rem}
+.sub{font-size:13px;color:var(--text-secondary);margin-bottom:1.25rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:var(--text-secondary);display:inline-block}
+.sync-dot.ok{background:var(--text-success)}
+.sync-dot.err{background:var(--text-danger)}
 .tabs{display:flex;gap:6px;margin-bottom:1.25rem;flex-wrap:wrap}
 .tab{padding:6px 16px;font-size:13px;border:0.5px solid var(--border);border-radius:99px;background:var(--bg-secondary);color:var(--text-secondary);cursor:pointer;transition:all .15s}
 .tab.active{background:var(--bg-primary);color:var(--text-primary);border-color:var(--border-md);font-weight:500}
 .card{background:var(--bg-primary);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:1rem}
-.sec-title{font-size:11px;font-weight:500;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px}
+.sec-title{font-size:11px;font-weight:500;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
+.sec-title .add-mini{font-size:11px;color:var(--text-info);cursor:pointer;text-transform:none;letter-spacing:0;font-weight:500}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
 .field{display:flex;flex-direction:column;gap:4px}
@@ -43,7 +47,15 @@ input:focus,select:focus,textarea:focus{border-color:var(--border-md)}
 textarea{resize:vertical;min-height:56px}
 .checklist{display:flex;flex-direction:column;gap:8px}
 .chk{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text-primary);cursor:pointer}
-.chk input{width:15px;height:15px;flex-shrink:0;accent-color:var(--text-info)}
+.chk input[type=checkbox]{width:15px;height:15px;flex-shrink:0;accent-color:var(--text-info)}
+.chk-row{display:flex;align-items:center;gap:8px}
+.chk-row .chk{flex:1}
+.chk-del{font-size:11px;color:var(--text-secondary);cursor:pointer;padding:2px 6px;border:0.5px solid var(--border);border-radius:var(--radius-md);background:transparent}
+.chk-del:hover{color:var(--text-danger);border-color:var(--text-danger)}
+.add-row{display:flex;gap:6px;margin-top:10px}
+.add-row input{flex:1}
+.add-btn{padding:6px 12px;font-size:12px;border:0.5px solid var(--border-md);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-primary);cursor:pointer;font-family:var(--font);white-space:nowrap}
+.add-btn:hover{background:var(--border)}
 .score-bar{display:flex;gap:6px}
 .sbtn{flex:1;padding:7px 0;font-size:12px;font-weight:500;border:0.5px solid var(--border-md);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-secondary);cursor:pointer;text-align:center;transition:all .1s}
 .sbtn.w{background:var(--bg-success);color:var(--text-success);border-color:var(--text-success)}
@@ -51,9 +63,6 @@ textarea{resize:vertical;min-height:56px}
 .sbtn.b{background:var(--bg-warning);color:var(--text-warning);border-color:var(--text-warning)}
 .rr-big{font-size:22px;font-weight:500;color:var(--text-primary);margin-top:4px;font-family:var(--mono)}
 .warn{font-size:12px;color:var(--text-danger);margin-top:5px;display:none}
-.conf-dots{display:flex;gap:5px;margin-top:4px}
-.dot{width:28px;height:28px;border-radius:50%;border:0.5px solid var(--border-md);background:var(--bg-secondary);cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;color:var(--text-secondary);transition:all .1s}
-.dot.on{background:var(--bg-info);color:var(--text-info);border-color:var(--text-info);font-weight:500}
 .save-btn{width:100%;padding:10px;font-size:14px;font-weight:500;background:var(--bg-primary);border:0.5px solid var(--border-md);border-radius:var(--radius-lg);color:var(--text-primary);cursor:pointer;margin-top:.5rem;font-family:var(--font);transition:background .15s}
 .save-btn:hover{background:var(--bg-secondary)}
 .metric-row{display:flex;gap:10px;flex-wrap:wrap}
@@ -91,19 +100,26 @@ textarea{resize:vertical;min-height:56px}
 .day-detail{background:var(--bg-secondary);border-radius:var(--radius-md);padding:10px 12px;margin-top:10px;font-size:13px;display:none}
 .monthly-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1rem}
 .stat-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid var(--border);font-size:13px}
+.pair-manage{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.pair-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;font-size:12px;background:var(--bg-secondary);border:0.5px solid var(--border);border-radius:99px;color:var(--text-primary)}
+.pair-chip .x{cursor:pointer;color:var(--text-secondary);font-size:14px;line-height:1}
+.pair-chip .x:hover{color:var(--text-danger)}
+.danger-btn{width:100%;padding:9px;font-size:13px;font-weight:500;background:transparent;border:0.5px solid var(--text-danger);border-radius:var(--radius-md);color:var(--text-danger);cursor:pointer;margin-top:8px;font-family:var(--font)}
+.danger-btn:hover{background:var(--bg-danger)}
 @media(max-width:500px){.grid2,.grid3{grid-template-columns:1fr}.metric-row{flex-wrap:wrap}}
 </style>
 </head>
 <body>
 <div class="container">
   <h1>Trade journal</h1>
-  <p class="sub">Multi-pair · Setup tracker · Monthly profit calendar</p>
+  <p class="sub"><span class="sync-dot" id="sync-dot"></span><span id="sync-status">Connecting…</span></p>
 
   <div class="tabs">
     <div class="tab active" onclick="showTab('log')">Log trade</div>
     <div class="tab" onclick="showTab('history')">History</div>
     <div class="tab" onclick="showTab('calendar')">Calendar</div>
     <div class="tab" onclick="showTab('stats')">Stats</div>
+    <div class="tab" onclick="showTab('settings')">Settings</div>
   </div>
 
   <!-- LOG -->
@@ -112,11 +128,7 @@ textarea{resize:vertical;min-height:56px}
       <div class="sec-title">Pair & session</div>
       <div class="grid3" style="margin-bottom:10px">
         <div class="field"><label>Pair</label>
-          <select id="f-pair">
-            <option>EURUSD</option><option>GBPUSD</option><option>USDJPY</option>
-            <option>GBPJPY</option><option>AUDUSD</option><option>USDCAD</option>
-            <option>EURJPY</option><option>NZDUSD</option><option>XAUUSD</option><option>US30</option>
-          </select>
+          <select id="f-pair"></select>
         </div>
         <div class="field"><label>Date</label><input type="date" id="f-date"></div>
         <div class="field"><label>Session</label>
@@ -137,13 +149,14 @@ textarea{resize:vertical;min-height:56px}
     </div>
 
     <div class="card">
-      <div class="sec-title">Setup checklist — all 5 required</div>
-      <div class="checklist">
-        <label class="chk"><input type="checkbox" id="c1"> Liquidity sweep before entry</label>
-        <label class="chk"><input type="checkbox" id="c2"> Displacement candle clearly larger</label>
-        <label class="chk"><input type="checkbox" id="c3"> MSS confirmed on 15M</label>
-        <label class="chk"><input type="checkbox" id="c4"> FVG aligns with HTF bias</label>
-        <label class="chk"><input type="checkbox" id="c5"> First touch of FVG</label>
+      <div class="sec-title">
+        <span>Setup checklist</span>
+        <span id="chk-status" style="font-size:11px;color:var(--text-secondary);text-transform:none;letter-spacing:0"></span>
+      </div>
+      <div class="checklist" id="checklist-render"></div>
+      <div class="add-row">
+        <input type="text" id="new-cond" placeholder="Add condition">
+        <button class="add-btn" onclick="addCondition()">Add</button>
       </div>
       <div id="chk-warn" class="warn">Not all conditions met — high-risk trade</div>
     </div>
@@ -151,9 +164,9 @@ textarea{resize:vertical;min-height:56px}
     <div class="card">
       <div class="sec-title">Risk & reward</div>
       <div class="grid3">
-        <div class="field"><label>Entry</label><input type="number" id="f-entry" placeholder="1.08500" step="0.00001" oninput="calcRR()"></div>
-        <div class="field"><label>Stop loss</label><input type="number" id="f-sl" placeholder="1.08350" step="0.00001" oninput="calcRR()"></div>
-        <div class="field"><label>Take profit</label><input type="number" id="f-tp" placeholder="1.08950" step="0.00001" oninput="calcRR()"></div>
+        <div class="field"><label>Entry</label><input type="number" id="f-entry" step="0.00001" oninput="calcRR()"></div>
+        <div class="field"><label>Stop loss</label><input type="number" id="f-sl" step="0.00001" oninput="calcRR()"></div>
+        <div class="field"><label>Take profit</label><input type="number" id="f-tp" step="0.00001" oninput="calcRR()"></div>
       </div>
       <div style="margin-top:10px">
         <div style="font-size:12px;color:var(--text-secondary)">Planned RR</div>
@@ -161,34 +174,8 @@ textarea{resize:vertical;min-height:56px}
         <div id="rr-warn" class="warn">Below 1:3 minimum — consider skipping</div>
       </div>
       <div class="grid2" style="margin-top:10px">
-        <div class="field"><label>Lot size</label><input type="number" id="f-lots" placeholder="0.10" step="0.01"></div>
-        <div class="field"><label>P&L (actual $)</label><input type="number" id="f-pnl" placeholder="+25.00" step="0.01"></div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="sec-title">Swept level & confidence</div>
-      <div class="grid2">
-        <div class="field"><label>Swept level</label>
-          <select id="f-swept">
-            <option value="">Select</option>
-            <option>PDH</option><option>PDL</option><option>Weekly high</option><option>Weekly low</option>
-            <option>Equal highs</option><option>Equal lows</option><option>Session high</option><option>Session low</option>
-          </select>
-        </div>
-        <div class="field"><label>Confluence</label>
-          <select id="f-conf-type">
-            <option value="">None</option><option>OB + FVG overlap</option><option>HTF OB present</option>
-            <option>Premium / discount zone</option><option>News catalyst</option>
-          </select>
-        </div>
-      </div>
-      <div class="field" style="margin-top:10px"><label>Confidence (1–5)</label>
-        <div class="conf-dots" id="conf-dots">
-          <div class="dot" onclick="setConf(1)">1</div><div class="dot" onclick="setConf(2)">2</div>
-          <div class="dot" onclick="setConf(3)">3</div><div class="dot" onclick="setConf(4)">4</div>
-          <div class="dot" onclick="setConf(5)">5</div>
-        </div>
+        <div class="field"><label>Lot size</label><input type="number" id="f-lots" step="0.01"></div>
+        <div class="field"><label>P&L (actual $)</label><input type="number" id="f-pnl" step="0.01"></div>
       </div>
     </div>
 
@@ -199,13 +186,13 @@ textarea{resize:vertical;min-height:56px}
         <div class="sbtn" id="btn-loss" onclick="setOutcome('loss')">Loss</div>
         <div class="sbtn" id="btn-be" onclick="setOutcome('be')">Break even</div>
       </div>
-      <div class="field" style="margin-top:10px"><label>Actual RR achieved</label><input type="number" id="f-actual-rr" placeholder="e.g. 2.5" step="0.1"></div>
+      <div class="field" style="margin-top:10px"><label>Actual RR achieved</label><input type="number" id="f-actual-rr" step="0.1"></div>
     </div>
 
     <div class="card">
       <div class="sec-title">Post-trade notes</div>
-      <div class="field"><label>What went right</label><textarea id="f-right" placeholder="e.g. clean PDL sweep, strong displacement candle"></textarea></div>
-      <div class="field" style="margin-top:10px"><label>What to improve</label><textarea id="f-wrong" placeholder="e.g. entered before full MSS confirmed"></textarea></div>
+      <div class="field"><label>What went right</label><textarea id="f-right"></textarea></div>
+      <div class="field" style="margin-top:10px"><label>What to improve</label><textarea id="f-wrong"></textarea></div>
       <div class="field" style="margin-top:10px"><label>Emotion check</label>
         <select id="f-emotion">
           <option value="">Select</option>
@@ -254,34 +241,264 @@ textarea{resize:vertical;min-height:56px}
       <div id="stats-pairs"></div>
     </div>
   </div>
+
+  <!-- SETTINGS -->
+  <div id="tab-settings" style="display:none">
+    <div class="card">
+      <div class="sec-title">Manage pairs</div>
+      <div class="pair-manage" id="pair-manage"></div>
+      <div class="add-row">
+        <input type="text" id="new-pair" placeholder="Add pair (e.g. AUDJPY)">
+        <button class="add-btn" onclick="addPair()">Add</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="sec-title">Manage default checklist</div>
+      <p style="font-size:12px;color:var(--text-secondary);margin-bottom:10px">Conditions saved here appear by default on new trades.</p>
+      <div class="checklist" id="settings-checklist"></div>
+      <div class="add-row">
+        <input type="text" id="new-default-cond" placeholder="Add default condition">
+        <button class="add-btn" onclick="addDefaultCondition()">Add</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="sec-title">Data</div>
+      <p style="font-size:12px;color:var(--text-secondary);margin-bottom:10px">Trades sync automatically to your Firebase database. Use the buttons below for manual backups or full reset.</p>
+      <button class="save-btn" onclick="exportData()">Export all trades (JSON)</button>
+      <button class="save-btn" onclick="document.getElementById('import-file').click()">Import trades from JSON</button>
+      <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
+      <button class="danger-btn" onclick="deleteAllTrades()">Delete all trades</button>
+    </div>
+  </div>
 </div>
 
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
+import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, getDoc }
+  from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDSP_fxWuvTKm7N6GsJMfE9GiR7XxY_vCU",
+  authDomain: "trade-journal-96a36.firebaseapp.com",
+  projectId: "trade-journal-96a36",
+  storageBucket: "trade-journal-96a36.firebasestorage.app",
+  messagingSenderId: "259685558680",
+  appId: "1:259685558680:web:4c9458e4d82e94a1f6e3ed"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// All data scoped under one user document so a future security rule can lock it down.
+const USER_ID = "uno";
+const tradesCol = collection(db, "users", USER_ID, "trades");
+const settingsDoc = doc(db, "users", USER_ID, "meta", "settings");
+
+window._fb = { db, tradesCol, settingsDoc, setDoc, deleteDoc, onSnapshot, getDoc, doc };
+window.dispatchEvent(new Event("fb-ready"));
+</script>
+
 <script>
-let trades = JSON.parse(localStorage.getItem('tj_trades') || '[]');
-let selOutcome = '', selConf = 0;
+const DEFAULT_PAIRS = ["EURUSD","GBPUSD","USDJPY","XAUUSD"];
+const DEFAULT_CHECKLIST = [
+  "Liquidity sweep before entry",
+  "Displacement candle clearly larger",
+  "MSS confirmed on 15M",
+  "FVG aligns with HTF bias",
+  "First touch of FVG"
+];
+
+let trades = [];
+let pairs = [...DEFAULT_PAIRS];
+let defaultChecklist = [...DEFAULT_CHECKLIST];
+let currentChecklist = []; // {text, checked}
+let selOutcome = '';
 let calYear, calMonth;
 let activeCalPair = 'All', activeHistPair = 'All', activeStatsPair = 'All';
+let fb = null;
+let unsubTrades = null;
+
+function setSyncStatus(state, text) {
+  const dot = document.getElementById('sync-dot');
+  const lbl = document.getElementById('sync-status');
+  dot.className = 'sync-dot' + (state==='ok'?' ok':state==='err'?' err':'');
+  lbl.textContent = text;
+}
+
+window.addEventListener('fb-ready', async () => {
+  fb = window._fb;
+  setSyncStatus('', 'Connected · loading…');
+  try {
+    // Load settings
+    const snap = await fb.getDoc(fb.settingsDoc);
+    if (snap.exists()) {
+      const data = snap.data();
+      if (Array.isArray(data.pairs) && data.pairs.length) pairs = data.pairs;
+      if (Array.isArray(data.checklist) && data.checklist.length) defaultChecklist = data.checklist;
+    } else {
+      await saveSettings();
+    }
+    rebuildPairDropdown();
+    resetChecklistFromDefault();
+    renderSettings();
+    // Live trades subscription
+    unsubTrades = fb.onSnapshot(fb.tradesCol, (qs) => {
+      trades = [];
+      qs.forEach(d => trades.push({ ...d.data(), id: d.id }));
+      trades.sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
+      setSyncStatus('ok', `Synced · ${trades.length} trade${trades.length===1?'':'s'}`);
+      // Re-render whichever tab is open
+      if (document.getElementById('tab-history').style.display !== 'none') renderHistory();
+      if (document.getElementById('tab-calendar').style.display !== 'none') renderCalendar();
+      if (document.getElementById('tab-stats').style.display !== 'none') renderStats();
+    }, (err) => {
+      console.error(err);
+      setSyncStatus('err', 'Sync error — check console');
+    });
+  } catch(e) {
+    console.error(e);
+    setSyncStatus('err', 'Connection error');
+  }
+});
+
+async function saveSettings() {
+  if (!fb) return;
+  await fb.setDoc(fb.settingsDoc, { pairs, checklist: defaultChecklist });
+}
 
 function init() {
   const now = new Date();
   calYear = now.getFullYear(); calMonth = now.getMonth();
   document.getElementById('f-date').valueAsDate = now;
-  document.querySelectorAll('.chk input').forEach(cb => cb.addEventListener('change', () => {
-    const all = ['c1','c2','c3','c4','c5'].every(id => document.getElementById(id).checked);
-    document.getElementById('chk-warn').style.display = all ? 'none' : 'block';
-  }));
+  rebuildPairDropdown();
+  resetChecklistFromDefault();
 }
 
-function save() { localStorage.setItem('tj_trades', JSON.stringify(trades)); }
+function rebuildPairDropdown() {
+  const sel = document.getElementById('f-pair');
+  const cur = sel.value;
+  sel.innerHTML = pairs.map(p => `<option>${escapeHtml(p)}</option>`).join('');
+  if (pairs.includes(cur)) sel.value = cur;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function resetChecklistFromDefault() {
+  currentChecklist = defaultChecklist.map(text => ({ text, checked: false }));
+  renderChecklist();
+}
+
+function renderChecklist() {
+  const c = document.getElementById('checklist-render');
+  if (!currentChecklist.length) {
+    c.innerHTML = '<div style="font-size:12px;color:var(--text-secondary)">No conditions yet. Add one below.</div>';
+  } else {
+    c.innerHTML = currentChecklist.map((item, i) => `
+      <div class="chk-row">
+        <label class="chk">
+          <input type="checkbox" ${item.checked?'checked':''} onchange="toggleCondition(${i})">
+          <span>${escapeHtml(item.text)}</span>
+        </label>
+        <button class="chk-del" onclick="removeCondition(${i})">remove</button>
+      </div>`).join('');
+  }
+  updateChkStatus();
+}
+
+function updateChkStatus() {
+  const total = currentChecklist.length;
+  const done = currentChecklist.filter(x => x.checked).length;
+  document.getElementById('chk-status').textContent = total ? `${done}/${total} met` : '';
+  document.getElementById('chk-warn').style.display =
+    (total > 0 && done < total) ? 'block' : 'none';
+}
+
+function toggleCondition(i) {
+  currentChecklist[i].checked = !currentChecklist[i].checked;
+  updateChkStatus();
+}
+
+function addCondition() {
+  const inp = document.getElementById('new-cond');
+  const v = inp.value.trim();
+  if (!v) return;
+  currentChecklist.push({ text: v, checked: false });
+  inp.value = '';
+  renderChecklist();
+}
+
+function removeCondition(i) {
+  currentChecklist.splice(i, 1);
+  renderChecklist();
+}
+
+// Settings — default checklist edits
+function renderSettings() {
+  // Pair chips
+  const pm = document.getElementById('pair-manage');
+  pm.innerHTML = pairs.map((p, i) => `
+    <span class="pair-chip">${escapeHtml(p)} <span class="x" onclick="removePair(${i})">×</span></span>
+  `).join('') || '<span style="font-size:12px;color:var(--text-secondary)">No pairs yet. Add one below.</span>';
+
+  // Default checklist editor
+  const sc = document.getElementById('settings-checklist');
+  sc.innerHTML = defaultChecklist.length ? defaultChecklist.map((t, i) => `
+    <div class="chk-row">
+      <span style="flex:1;font-size:13px">${escapeHtml(t)}</span>
+      <button class="chk-del" onclick="removeDefaultCondition(${i})">remove</button>
+    </div>
+  `).join('') : '<div style="font-size:12px;color:var(--text-secondary)">No defaults yet.</div>';
+}
+
+async function addPair() {
+  const inp = document.getElementById('new-pair');
+  const v = inp.value.trim().toUpperCase();
+  if (!v) return;
+  if (pairs.includes(v)) { alert('Pair already exists.'); return; }
+  pairs.push(v);
+  inp.value = '';
+  rebuildPairDropdown();
+  renderSettings();
+  await saveSettings();
+}
+
+async function removePair(i) {
+  if (!confirm(`Remove ${pairs[i]} from your pair list?`)) return;
+  pairs.splice(i, 1);
+  rebuildPairDropdown();
+  renderSettings();
+  await saveSettings();
+}
+
+async function addDefaultCondition() {
+  const inp = document.getElementById('new-default-cond');
+  const v = inp.value.trim();
+  if (!v) return;
+  defaultChecklist.push(v);
+  inp.value = '';
+  renderSettings();
+  await saveSettings();
+}
+
+async function removeDefaultCondition(i) {
+  defaultChecklist.splice(i, 1);
+  renderSettings();
+  await saveSettings();
+}
 
 function showTab(t) {
-  ['log','history','calendar','stats'].forEach((x,i) => {
+  ['log','history','calendar','stats','settings'].forEach((x,i) => {
     document.getElementById('tab-'+x).style.display = x===t ? 'block' : 'none';
     document.querySelectorAll('.tab')[i].classList.toggle('active', x===t);
   });
   if(t==='history') renderHistory();
   if(t==='calendar') renderCalendar();
   if(t==='stats') renderStats();
+  if(t==='settings') renderSettings();
 }
 
 function calcRR() {
@@ -304,12 +521,8 @@ function setOutcome(o) {
   });
 }
 
-function setConf(n) {
-  selConf=n;
-  document.querySelectorAll('#conf-dots .dot').forEach((d,i)=>d.classList.toggle('on',i<n));
-}
-
-function saveTrade() {
+async function saveTrade() {
+  if (!fb) { alert('Not connected to database yet.'); return; }
   const date=document.getElementById('f-date').value;
   const pair=document.getElementById('f-pair').value;
   if(!date||!pair){alert('Please fill in date and pair.');return;}
@@ -318,51 +531,58 @@ function saveTrade() {
   const p=parseFloat(document.getElementById('f-tp').value)||null;
   let rr=null;
   if(e&&s&&p){const risk=Math.abs(e-s);rr=risk?parseFloat((Math.abs(p-e)/risk).toFixed(2)):null;}
-  trades.unshift({
-    id:Date.now(), date, pair,
-    session:document.getElementById('f-session').value,
-    dir:document.getElementById('f-dir').value,
-    bias:document.getElementById('f-bias').value,
-    swept:document.getElementById('f-swept').value,
-    conf:selConf,
-    checklistFull:['c1','c2','c3','c4','c5'].every(id=>document.getElementById(id).checked),
+
+  const id = String(Date.now());
+  const allMet = currentChecklist.length > 0 && currentChecklist.every(c => c.checked);
+  const trade = {
+    createdAt: Date.now(),
+    date, pair,
+    session: document.getElementById('f-session').value,
+    dir: document.getElementById('f-dir').value,
+    bias: document.getElementById('f-bias').value,
+    checklist: currentChecklist.map(c => ({ text: c.text, checked: !!c.checked })),
+    checklistFull: allMet,
     rr,
-    actualRR:parseFloat(document.getElementById('f-actual-rr').value)||null,
-    pnl:parseFloat(document.getElementById('f-pnl').value)||null,
-    lots:parseFloat(document.getElementById('f-lots').value)||null,
-    outcome:selOutcome,
-    emotion:document.getElementById('f-emotion').value,
-    right:document.getElementById('f-right').value,
-    wrong:document.getElementById('f-wrong').value
-  });
-  save();
-  resetForm();
-  alert('Trade saved.');
+    actualRR: parseFloat(document.getElementById('f-actual-rr').value)||null,
+    pnl: parseFloat(document.getElementById('f-pnl').value)||null,
+    lots: parseFloat(document.getElementById('f-lots').value)||null,
+    outcome: selOutcome,
+    emotion: document.getElementById('f-emotion').value,
+    right: document.getElementById('f-right').value,
+    wrong: document.getElementById('f-wrong').value
+  };
+
+  try {
+    await fb.setDoc(fb.doc(fb.tradesCol, id), trade);
+    resetForm();
+    setSyncStatus('ok', 'Trade saved');
+  } catch(err) {
+    console.error(err);
+    alert('Failed to save: ' + err.message);
+  }
 }
 
 function resetForm() {
-  ['f-session','f-dir','f-bias','f-swept','f-conf-type','f-entry','f-sl','f-tp','f-actual-rr','f-pnl','f-lots','f-emotion','f-right','f-wrong'].forEach(id=>{
+  ['f-session','f-dir','f-bias','f-entry','f-sl','f-tp','f-actual-rr','f-pnl','f-lots','f-emotion','f-right','f-wrong'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.value='';
   });
-  ['c1','c2','c3','c4','c5'].forEach(id=>document.getElementById(id).checked=false);
-  setOutcome('');selConf=0;
-  document.querySelectorAll('#conf-dots .dot').forEach(d=>d.classList.remove('on'));
+  resetChecklistFromDefault();
+  setOutcome('');
   document.getElementById('rr-val').textContent='—';
   document.getElementById('rr-warn').style.display='none';
   document.getElementById('chk-warn').style.display='none';
   document.getElementById('f-date').valueAsDate=new Date();
-  document.getElementById('f-pair').value='EURUSD';
+  if (pairs.length) document.getElementById('f-pair').value = pairs[0];
 }
 
-function getPairs() {
-  const used=[...new Set(trades.map(t=>t.pair))].filter(Boolean);
-  return used.length?used:[];
+function getUsedPairs() {
+  return [...new Set(trades.map(t=>t.pair))].filter(Boolean);
 }
 
 function buildFilter(cid, active, cb) {
   const c=document.getElementById(cid);
-  const pairs=['All',...getPairs()];
-  c.innerHTML=pairs.map(p=>`<div class="pfbtn${p===active?' on':''}" onclick="${cb}('${p}')">${p}</div>`).join('');
+  const list=['All',...getUsedPairs()];
+  c.innerHTML=list.map(p=>`<div class="pfbtn${p===active?' on':''}" onclick="${cb}('${escapeHtml(p)}')">${escapeHtml(p)}</div>`).join('');
 }
 
 function setHistPair(p){activeHistPair=p;renderHistory();}
@@ -370,33 +590,35 @@ function setCalPair(p){activeCalPair=p;renderCalendar();}
 function setStatsPair(p){activeStatsPair=p;renderStats();}
 
 function renderHistory() {
-  buildFilter('hist-filter','All'===activeHistPair?'All':activeHistPair,'setHistPair');
+  buildFilter('hist-filter',activeHistPair,'setHistPair');
   const f=activeHistPair==='All'?trades:trades.filter(t=>t.pair===activeHistPair);
   const c=document.getElementById('hist-list');
   if(!f.length){c.innerHTML='<div class="empty">No trades yet</div>';return;}
   c.innerHTML=f.map(t=>{
     const badge=t.outcome?`<span class="badge b${t.outcome[0]}">${t.outcome==='be'?'B/E':t.outcome}</span>`:'';
-    const pnl=t.pnl!=null?(t.pnl>=0?`<span style="color:var(--text-success)">+$${t.pnl.toFixed(2)}</span>`:`<span style="color:var(--text-danger)">-$${Math.abs(t.pnl).toFixed(2)}</span>`):'';
+    const pnl=t.pnl!=null?(t.pnl>=0?`<span style="color:var(--text-success)">+$${Number(t.pnl).toFixed(2)}</span>`:`<span style="color:var(--text-danger)">-$${Math.abs(t.pnl).toFixed(2)}</span>`):'';
     return `<div class="trade-row" id="tr-${t.id}">
       <div style="flex:1;min-width:0">
-        <div style="font-weight:500;font-size:13px;color:var(--text-primary)">${t.date} · ${t.pair} · ${t.dir||'—'} · ${t.session||'—'}</div>
-        <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">RR: ${t.rr?'1:'+t.rr:'—'} · Swept: ${t.swept||'—'} · Conf: ${t.conf||'—'}/5</div>
-        ${t.wrong?`<div style="font-size:12px;color:var(--text-secondary);font-style:italic;margin-top:2px">${t.wrong.substring(0,70)}${t.wrong.length>70?'…':''}</div>`:''}
+        <div style="font-weight:500;font-size:13px;color:var(--text-primary)">${escapeHtml(t.date)} · ${escapeHtml(t.pair)} · ${escapeHtml(t.dir||'—')} · ${escapeHtml(t.session||'—')}</div>
+        <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">RR: ${t.rr?'1:'+t.rr:'—'} · Bias: ${escapeHtml(t.bias||'—')}</div>
+        ${t.wrong?`<div style="font-size:12px;color:var(--text-secondary);font-style:italic;margin-top:2px">${escapeHtml(t.wrong.substring(0,70))}${t.wrong.length>70?'…':''}</div>`:''}
       </div>
       <div style="text-align:right;flex-shrink:0;margin-left:12px;display:flex;flex-direction:column;align-items:flex-end;gap:4px">
-        <button onclick="deleteTrade(${t.id})" style="font-size:11px;padding:2px 8px;border:0.5px solid var(--border-md);border-radius:var(--radius-md);background:transparent;color:var(--text-secondary);cursor:pointer;font-family:var(--font)">delete</button>
+        <button onclick="deleteTrade('${t.id}')" style="font-size:11px;padding:2px 8px;border:0.5px solid var(--border-md);border-radius:var(--radius-md);background:transparent;color:var(--text-secondary);cursor:pointer;font-family:var(--font)">delete</button>
         ${badge}<div style="font-size:13px;font-weight:500">${pnl}</div>
-        ${!t.checklistFull?'<div style="font-size:10px;color:var(--text-danger)">incomplete</div>':''}
+        ${t.checklist&&t.checklist.length&&!t.checklistFull?'<div style="font-size:10px;color:var(--text-danger)">incomplete</div>':''}
       </div>
     </div>`;
   }).join('');
 }
 
-function deleteTrade(id) {
+async function deleteTrade(id) {
   if(!confirm('Delete this trade?')) return;
-  trades = trades.filter(t => t.id !== id);
-  save();
-  renderHistory();
+  try {
+    await fb.deleteDoc(fb.doc(fb.tradesCol, id));
+  } catch(err) {
+    alert('Delete failed: ' + err.message);
+  }
 }
 
 function changeMonth(d) {
@@ -463,8 +685,8 @@ function showDayDetail(ds) {
   dd.style.display='block';
   dd.innerHTML=`<div style="font-weight:500;margin-bottom:8px;color:var(--text-primary)">${ds} — ${dt.length} trade${dt.length>1?'s':''} · <span style="color:${tp>=0?'var(--text-success)':'var(--text-danger)'}">${tp>=0?'+':''}$${tp.toFixed(2)}</span></div>`+
     dt.map(t=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:0.5px solid var(--border);font-size:12px">
-      <span style="color:var(--text-primary)">${t.pair} ${t.dir||''} ${t.session||''}</span>
-      <span>${t.outcome?`<span class="badge b${t.outcome[0]}">${t.outcome==='be'?'B/E':t.outcome}</span>`:''} ${t.pnl!=null?`<b style="color:${t.pnl>=0?'var(--text-success)':'var(--text-danger)'}">${t.pnl>=0?'+':''}$${t.pnl.toFixed(2)}</b>`:''}</span>
+      <span style="color:var(--text-primary)">${escapeHtml(t.pair)} ${escapeHtml(t.dir||'')} ${escapeHtml(t.session||'')}</span>
+      <span>${t.outcome?`<span class="badge b${t.outcome[0]}">${t.outcome==='be'?'B/E':t.outcome}</span>`:''} ${t.pnl!=null?`<b style="color:${t.pnl>=0?'var(--text-success)':'var(--text-danger)'}">${t.pnl>=0?'+':''}$${Number(t.pnl).toFixed(2)}</b>`:''}</span>
     </div>`).join('');
 }
 
@@ -494,18 +716,95 @@ function renderStats() {
       <span style="color:var(--text-primary)">${s}</span>
       <span style="color:var(--text-secondary)">${st.length}t · <b style="color:var(--text-primary)">${Math.round(sw/st.length*100)}% win</b> · <b style="color:${sp>=0?'var(--text-success)':'var(--text-danger)'}">${sp>=0?'+':''}$${sp.toFixed(2)}</b></span>
     </div>`;
-  }).join('');
+  }).join('') || '<div class="empty">No session data yet</div>';
   const usedPairs=[...new Set(f.map(t=>t.pair))].filter(Boolean);
   document.getElementById('stats-pairs').innerHTML=usedPairs.length?usedPairs.map(pair=>{
     const pt=f.filter(t=>t.pair===pair);
     const pw=pt.filter(t=>t.outcome==='win').length;
     const pp=pt.reduce((a,t)=>a+(t.pnl||0),0);
     return `<div class="stat-row">
-      <span style="font-weight:500;color:var(--text-primary)">${pair}</span>
+      <span style="font-weight:500;color:var(--text-primary)">${escapeHtml(pair)}</span>
       <span style="color:var(--text-secondary)">${pt.length}t · ${Math.round(pw/pt.length*100)}% win · <b style="color:${pp>=0?'var(--text-success)':'var(--text-danger)'}">${pp>=0?'+':''}$${pp.toFixed(2)}</b></span>
     </div>`;
   }).join(''):'<div class="empty">No trades logged yet</div>';
 }
+
+function exportData() {
+  const blob = new Blob([JSON.stringify({ trades, pairs, defaultChecklist }, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `trade-journal-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+async function importData(ev) {
+  const file = ev.target.files[0];
+  if (!file) return;
+  if (!confirm('Import will add trades from the file to your database. Continue?')) {
+    ev.target.value = '';
+    return;
+  }
+  try {
+    const txt = await file.text();
+    const data = JSON.parse(txt);
+    const incoming = Array.isArray(data) ? data : (data.trades || []);
+    if (!incoming.length) { alert('No trades found in file.'); return; }
+    let n = 0;
+    for (const t of incoming) {
+      const id = t.id ? String(t.id) : String(Date.now() + n);
+      const { id: _, ...rest } = t;
+      await fb.setDoc(fb.doc(fb.tradesCol, id), { ...rest, createdAt: rest.createdAt || Date.now() });
+      n++;
+    }
+    if (Array.isArray(data.pairs)) { pairs = data.pairs; }
+    if (Array.isArray(data.defaultChecklist)) { defaultChecklist = data.defaultChecklist; }
+    await saveSettings();
+    rebuildPairDropdown();
+    renderSettings();
+    alert(`Imported ${n} trade${n===1?'':'s'}.`);
+  } catch(err) {
+    alert('Import failed: ' + err.message);
+  } finally {
+    ev.target.value = '';
+  }
+}
+
+async function deleteAllTrades() {
+  if (!trades.length) { alert('No trades to delete.'); return; }
+  const sure = prompt(`This will permanently delete ALL ${trades.length} trades. Type DELETE to confirm.`);
+  if (sure !== 'DELETE') return;
+  try {
+    for (const t of trades) {
+      await fb.deleteDoc(fb.doc(fb.tradesCol, t.id));
+    }
+    alert('All trades deleted.');
+  } catch(err) {
+    alert('Delete failed: ' + err.message);
+  }
+}
+
+// Expose to onclick handlers
+window.showTab = showTab;
+window.calcRR = calcRR;
+window.setOutcome = setOutcome;
+window.saveTrade = saveTrade;
+window.toggleCondition = toggleCondition;
+window.addCondition = addCondition;
+window.removeCondition = removeCondition;
+window.addPair = addPair;
+window.removePair = removePair;
+window.addDefaultCondition = addDefaultCondition;
+window.removeDefaultCondition = removeDefaultCondition;
+window.setHistPair = setHistPair;
+window.setCalPair = setCalPair;
+window.setStatsPair = setStatsPair;
+window.deleteTrade = deleteTrade;
+window.changeMonth = changeMonth;
+window.showDayDetail = showDayDetail;
+window.exportData = exportData;
+window.importData = importData;
+window.deleteAllTrades = deleteAllTrades;
 
 init();
 </script>
