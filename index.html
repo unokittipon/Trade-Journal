@@ -576,6 +576,17 @@ function init() {
   setupImageDnD();
   setupGlobalDnD();
   setupPaste();
+  setupNumberInputWheelGuard();
+}
+
+// Stop trackpad/wheel scroll from accidentally incrementing number inputs
+function setupNumberInputWheelGuard() {
+  document.addEventListener('wheel', e => {
+    const t = e.target;
+    if (t && t.tagName === 'INPUT' && t.type === 'number' && document.activeElement === t) {
+      t.blur();
+    }
+  }, { passive: true });
 }
 
 function rebuildPairDropdown() {
