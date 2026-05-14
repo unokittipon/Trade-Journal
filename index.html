@@ -73,7 +73,8 @@ textarea{resize:vertical;min-height:56px}
 .bw{background:var(--bg-success);color:var(--text-success)}
 .bl{background:var(--bg-danger);color:var(--text-danger)}
 .bb{background:var(--bg-warning);color:var(--text-warning)}
-.trade-row{background:var(--bg-primary);border:0.5px solid var(--border);border-radius:var(--radius-md);padding:10px 14px;display:flex;justify-content:space-between;align-items:center;font-size:13px;margin-bottom:8px}
+.trade-row{background:var(--bg-primary);border:0.5px solid var(--border);border-radius:var(--radius-md);padding:10px 14px;margin-bottom:8px}
+.trade-row-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;font-size:13px}
 .empty{text-align:center;color:var(--text-secondary);font-size:13px;padding:2rem 0}
 .cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .cal-nav button{padding:5px 14px;font-size:13px;border:0.5px solid var(--border-md);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-primary);cursor:pointer;font-family:var(--font);transition:background .15s}
@@ -106,13 +107,74 @@ textarea{resize:vertical;min-height:56px}
 .pair-chip .x:hover{color:var(--text-danger)}
 .danger-btn{width:100%;padding:9px;font-size:13px;font-weight:500;background:transparent;border:0.5px solid var(--text-danger);border-radius:var(--radius-md);color:var(--text-danger);cursor:pointer;margin-top:8px;font-family:var(--font)}
 .danger-btn:hover{background:var(--bg-danger)}
-@media(max-width:500px){.grid2,.grid3{grid-template-columns:1fr}.metric-row{flex-wrap:wrap}}
+/* Image upload */
+.img-drop{border:1px dashed var(--border-md);border-radius:var(--radius-md);padding:1rem;text-align:center;color:var(--text-secondary);font-size:12px;cursor:pointer;background:var(--bg-secondary);transition:all .15s}
+.img-drop:hover{background:var(--bg-tertiary)}
+.img-drop.dragover{background:var(--bg-info);border-color:var(--text-info);color:var(--text-info)}
+.img-drop .hint{display:block;font-size:11px;color:var(--text-secondary);margin-top:3px}
+.img-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:10px}
+.img-grid:empty{display:none}
+.img-tile{position:relative;border-radius:var(--radius-md);overflow:hidden;border:0.5px solid var(--border);background:var(--bg-secondary);aspect-ratio:16/10}
+.img-tile img{width:100%;height:100%;object-fit:cover;cursor:zoom-in;display:block}
+.img-remove{position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.7);color:#fff;border:none;border-radius:50%;width:24px;height:24px;font-size:14px;cursor:pointer;line-height:1;z-index:2}
+.img-remove:hover{background:rgba(163,45,45,0.9)}
+/* History row thumbs */
+.trade-thumbs{display:flex;gap:4px;flex-shrink:0}
+.trade-thumb{width:44px;height:44px;border-radius:var(--radius-md);object-fit:cover;cursor:pointer;border:0.5px solid var(--border);display:block}
+/* Lightbox */
+.lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:1000;align-items:center;justify-content:center;padding:1rem;cursor:pointer}
+.lightbox.on{display:flex}
+.lightbox img{max-width:100%;max-height:100%;border-radius:var(--radius-md)}
+/* Partials */
+.partial-row{display:grid;grid-template-columns:1fr 1fr auto;gap:6px;margin-bottom:6px;align-items:end}
+.partial-row .field label{font-size:11px}
+.partial-del{padding:6px 10px;font-size:14px;border:0.5px solid var(--border);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-secondary);cursor:pointer;line-height:1;height:fit-content;align-self:end;margin-bottom:1px}
+.partial-del:hover{color:var(--text-danger);border-color:var(--text-danger)}
+.partial-summary{background:var(--bg-secondary);border-radius:var(--radius-md);padding:8px 12px;margin-top:8px;font-size:13px;display:flex;justify-content:space-between;align-items:center}
+.partial-summary .val{font-family:var(--mono);font-weight:500;font-size:15px}
+.edit-banner{background:var(--bg-info);color:var(--text-info);padding:8px 12px;border-radius:var(--radius-md);margin-bottom:1rem;font-size:13px;display:none;align-items:center;justify-content:space-between;gap:10px}
+.edit-banner.on{display:flex}
+.edit-banner button{padding:4px 10px;font-size:12px;border:0.5px solid var(--text-info);border-radius:var(--radius-md);background:transparent;color:var(--text-info);cursor:pointer;font-family:var(--font)}
+@media(max-width:500px){.grid2,.grid3{grid-template-columns:1fr}.metric-row{flex-wrap:wrap}.partial-row{grid-template-columns:1fr 1fr auto}}
+/* Login overlay */
+.login-overlay{position:fixed;inset:0;background:var(--bg-tertiary);z-index:2000;display:flex;align-items:center;justify-content:center;padding:1rem}
+.login-card{background:var(--bg-primary);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;width:100%;max-width:340px}
+.login-card h2{font-size:18px;font-weight:500;margin-bottom:4px}
+.login-card .sub{font-size:12px;color:var(--text-secondary);margin-bottom:1rem;display:block}
+.login-card .field{margin-bottom:10px}
+.login-err{font-size:12px;color:var(--text-danger);margin-top:8px;min-height:1em}
+.signout-btn{padding:5px 12px;font-size:12px;border:0.5px solid var(--border-md);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-primary);cursor:pointer;font-family:var(--font);margin-left:auto}
+.signout-btn:hover{background:var(--border)}
+.user-pill{font-size:11px;color:var(--text-secondary);font-family:var(--mono)}
 </style>
 </head>
 <body>
+<!-- Login overlay (shown until signed in) -->
+<div class="login-overlay" id="login-overlay">
+  <div class="login-card">
+    <h2>Sign in</h2>
+    <span class="sub">Trade journal · private</span>
+    <div class="field">
+      <label style="font-size:12px;color:var(--text-secondary)">Email</label>
+      <input type="email" id="login-email" autocomplete="email">
+    </div>
+    <div class="field">
+      <label style="font-size:12px;color:var(--text-secondary)">Password</label>
+      <input type="password" id="login-pass" autocomplete="current-password">
+    </div>
+    <button class="save-btn" id="login-btn" onclick="doLogin()" style="margin-top:.5rem">Sign in</button>
+    <div class="login-err" id="login-err"></div>
+  </div>
+</div>
+
 <div class="container">
   <h1>Trade journal</h1>
-  <p class="sub"><span class="sync-dot" id="sync-dot"></span><span id="sync-status">Connecting…</span></p>
+  <p class="sub">
+    <span class="sync-dot" id="sync-dot"></span>
+    <span id="sync-status">Connecting…</span>
+    <span class="user-pill" id="user-pill" style="display:none"></span>
+    <button class="signout-btn" id="signout-btn" onclick="doSignOut()" style="display:none">Sign out</button>
+  </p>
 
   <div class="tabs">
     <div class="tab active" onclick="showTab('log')">Log trade</div>
@@ -124,21 +186,30 @@ textarea{resize:vertical;min-height:56px}
 
   <!-- LOG -->
   <div id="tab-log">
+    <div class="edit-banner" id="edit-banner">
+      <span id="edit-banner-text">Editing trade</span>
+      <button onclick="cancelEdit()">Cancel edit</button>
+    </div>
+
     <div class="card">
-      <div class="sec-title">Pair & session</div>
+      <div class="sec-title">Pair, date & session</div>
       <div class="grid3" style="margin-bottom:10px">
         <div class="field"><label>Pair</label>
           <select id="f-pair"></select>
         </div>
         <div class="field"><label>Date</label><input type="date" id="f-date"></div>
+        <div class="field"><label>Entry time (GMT+7)</label><input type="time" id="f-time"></div>
+      </div>
+      <div class="grid3">
         <div class="field"><label>Session</label>
           <select id="f-session">
             <option value="">Select</option>
-            <option>London open</option><option>NY open</option><option>London close</option><option>Asian</option>
+            <option>London open (13:00–15:00)</option>
+            <option>NY open (19:00–22:00)</option>
+            <option>London close (22:00–00:00)</option>
+            <option>Asian (05:00–09:00)</option>
           </select>
         </div>
-      </div>
-      <div class="grid2">
         <div class="field"><label>Direction</label>
           <select id="f-dir"><option value="">Select</option><option>Buy</option><option>Sell</option></select>
         </div>
@@ -186,7 +257,34 @@ textarea{resize:vertical;min-height:56px}
         <div class="sbtn" id="btn-loss" onclick="setOutcome('loss')">Loss</div>
         <div class="sbtn" id="btn-be" onclick="setOutcome('be')">Break even</div>
       </div>
-      <div class="field" style="margin-top:10px"><label>Actual RR achieved</label><input type="number" id="f-actual-rr" step="0.1"></div>
+
+      <div style="margin-top:14px">
+        <div class="sec-title" style="margin-bottom:8px">
+          <span>Partial exits</span>
+          <span class="add-mini" onclick="addPartial()">+ add partial</span>
+        </div>
+        <div id="partials-render"></div>
+        <div class="partial-summary">
+          <span style="color:var(--text-secondary)">Weighted RR · <span id="partial-pct" style="font-family:var(--mono)">0%</span> closed</span>
+          <span class="val" id="partial-rr">—</span>
+        </div>
+        <div id="partial-warn" class="warn">Partials exceed 100% — reduce close %</div>
+      </div>
+
+      <div class="field" style="margin-top:14px"><label>Actual RR achieved</label><input type="number" id="f-actual-rr" step="0.01"></div>
+    </div>
+
+    <div class="card">
+      <div class="sec-title">
+        <span>Screenshots</span>
+        <span id="img-count" style="font-size:11px;color:var(--text-secondary);text-transform:none;letter-spacing:0"></span>
+      </div>
+      <div class="img-drop" id="img-drop" onclick="document.getElementById('img-input').click()">
+        Tap, drop, or paste images (up to 4, auto-compressed)
+        <span class="hint">JPEG / PNG · drag from desktop or Ctrl+V to paste</span>
+      </div>
+      <input type="file" id="img-input" accept="image/*" multiple style="display:none" onchange="handleImages(event.target.files); event.target.value=''">
+      <div class="img-grid" id="img-grid"></div>
     </div>
 
     <div class="card">
@@ -201,7 +299,7 @@ textarea{resize:vertical;min-height:56px}
         </select>
       </div>
     </div>
-    <button class="save-btn" onclick="saveTrade()">Save trade</button>
+    <button class="save-btn" id="save-btn" onclick="saveTrade()">Save trade</button>
   </div>
 
   <!-- HISTORY -->
@@ -274,10 +372,20 @@ textarea{resize:vertical;min-height:56px}
   </div>
 </div>
 
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <button id="lb-prev" onclick="event.stopPropagation();lbStep(-1)" style="position:absolute;left:1rem;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.15);color:#fff;border:none;border-radius:50%;width:44px;height:44px;font-size:22px;cursor:pointer;display:none">‹</button>
+  <img id="lightbox-img">
+  <button id="lb-next" onclick="event.stopPropagation();lbStep(1)" style="position:absolute;right:1rem;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.15);color:#fff;border:none;border-radius:50%;width:44px;height:44px;font-size:22px;cursor:pointer;display:none">›</button>
+  <div id="lb-counter" style="position:absolute;bottom:1.5rem;left:0;right:0;text-align:center;color:rgba(255,255,255,0.7);font-size:13px;font-family:var(--mono);display:none"></div>
+</div>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
-import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, getDoc }
+import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, getDoc, getDocs }
   from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, setPersistence, browserLocalPersistence }
+  from "https://www.gstatic.com/firebasejs/12.12.1/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDSP_fxWuvTKm7N6GsJMfE9GiR7XxY_vCU",
@@ -290,13 +398,15 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
+// Stay signed in across reloads
+setPersistence(auth, browserLocalPersistence).catch(console.error);
 
-// All data scoped under one user document so a future security rule can lock it down.
-const USER_ID = "uno";
-const tradesCol = collection(db, "users", USER_ID, "trades");
-const settingsDoc = doc(db, "users", USER_ID, "meta", "settings");
-
-window._fb = { db, tradesCol, settingsDoc, setDoc, deleteDoc, onSnapshot, getDoc, doc };
+// Expose Firestore + helpers; the trades collection path is built once we know the UID.
+window._fb = {
+  db, doc, collection, setDoc, deleteDoc, onSnapshot, getDoc, getDocs,
+  auth, onAuthStateChanged, signInWithEmailAndPassword, signOut
+};
 window.dispatchEvent(new Event("fb-ready"));
 </script>
 
@@ -313,11 +423,16 @@ const DEFAULT_CHECKLIST = [
 let trades = [];
 let pairs = [...DEFAULT_PAIRS];
 let defaultChecklist = [...DEFAULT_CHECKLIST];
-let currentChecklist = []; // {text, checked}
+let currentChecklist = [];
+let partials = []; // {pct, rr}
 let selOutcome = '';
+let currentImages = []; // array of base64 strings
+const MAX_IMAGES = 4;
+let editingId = null;    // id of trade being edited
 let calYear, calMonth;
 let activeCalPair = 'All', activeHistPair = 'All', activeStatsPair = 'All';
 let fb = null;
+let fbPaths = null;
 let unsubTrades = null;
 
 function setSyncStatus(state, text) {
@@ -327,12 +442,46 @@ function setSyncStatus(state, text) {
   lbl.textContent = text;
 }
 
-window.addEventListener('fb-ready', async () => {
+window.addEventListener('fb-ready', () => {
   fb = window._fb;
+  setSyncStatus('', 'Awaiting sign-in…');
+  // Auth state drives everything
+  fb.onAuthStateChanged(fb.auth, (user) => {
+    if (user) {
+      onSignedIn(user);
+    } else {
+      onSignedOut();
+    }
+  });
+});
+
+function onSignedOut() {
+  // Tear down any active subscription
+  if (unsubTrades) { try { unsubTrades(); } catch(_){} unsubTrades = null; }
+  trades = [];
+  fbPaths = null;
+  document.getElementById('login-overlay').style.display = 'flex';
+  document.getElementById('user-pill').style.display = 'none';
+  document.getElementById('signout-btn').style.display = 'none';
+  setSyncStatus('', 'Signed out');
+}
+
+async function onSignedIn(user) {
+  document.getElementById('login-overlay').style.display = 'none';
+  document.getElementById('user-pill').style.display = 'inline-block';
+  document.getElementById('user-pill').textContent = user.email || user.uid.slice(0,6);
+  document.getElementById('signout-btn').style.display = 'inline-block';
+
+  // Build per-UID paths
+  fbPaths = {
+    tradesCol: fb.collection(fb.db, "users", user.uid, "trades"),
+    settingsDoc: fb.doc(fb.db, "users", user.uid, "meta", "settings")
+  };
+
   setSyncStatus('', 'Connected · loading…');
   try {
-    // Load settings
-    const snap = await fb.getDoc(fb.settingsDoc);
+    // Load settings (per-UID)
+    const snap = await fb.getDoc(fbPaths.settingsDoc);
     if (snap.exists()) {
       const data = snap.data();
       if (Array.isArray(data.pairs) && data.pairs.length) pairs = data.pairs;
@@ -343,13 +492,13 @@ window.addEventListener('fb-ready', async () => {
     rebuildPairDropdown();
     resetChecklistFromDefault();
     renderSettings();
+
     // Live trades subscription
-    unsubTrades = fb.onSnapshot(fb.tradesCol, (qs) => {
+    unsubTrades = fb.onSnapshot(fbPaths.tradesCol, (qs) => {
       trades = [];
       qs.forEach(d => trades.push({ ...d.data(), id: d.id }));
       trades.sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
       setSyncStatus('ok', `Synced · ${trades.length} trade${trades.length===1?'':'s'}`);
-      // Re-render whichever tab is open
       if (document.getElementById('tab-history').style.display !== 'none') renderHistory();
       if (document.getElementById('tab-calendar').style.display !== 'none') renderCalendar();
       if (document.getElementById('tab-stats').style.display !== 'none') renderStats();
@@ -361,11 +510,44 @@ window.addEventListener('fb-ready', async () => {
     console.error(e);
     setSyncStatus('err', 'Connection error');
   }
+}
+
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pass = document.getElementById('login-pass').value;
+  const errEl = document.getElementById('login-err');
+  const btn = document.getElementById('login-btn');
+  errEl.textContent = '';
+  if (!email || !pass) { errEl.textContent = 'Enter email and password.'; return; }
+  btn.disabled = true; btn.textContent = 'Signing in…';
+  try {
+    await fb.signInWithEmailAndPassword(fb.auth, email, pass);
+    // onAuthStateChanged fires automatically
+    document.getElementById('login-pass').value = '';
+  } catch(err) {
+    console.error(err);
+    const msg = (err && err.code) ? err.code.replace('auth/','').replace(/-/g,' ') : 'Sign-in failed';
+    errEl.textContent = msg;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Sign in';
+  }
+}
+
+async function doSignOut() {
+  if (!confirm('Sign out?')) return;
+  try { await fb.signOut(fb.auth); } catch(err) { alert(err.message); }
+}
+
+// Allow Enter key to submit login form
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.getElementById('login-overlay').style.display !== 'none') {
+    doLogin();
+  }
 });
 
 async function saveSettings() {
-  if (!fb) return;
-  await fb.setDoc(fb.settingsDoc, { pairs, checklist: defaultChecklist });
+  if (!fb || !fbPaths) return;
+  await fb.setDoc(fbPaths.settingsDoc, { pairs, checklist: defaultChecklist });
 }
 
 function init() {
@@ -374,6 +556,11 @@ function init() {
   document.getElementById('f-date').valueAsDate = now;
   rebuildPairDropdown();
   resetChecklistFromDefault();
+  renderPartials();
+  renderImages();
+  setupImageDnD();
+  setupGlobalDnD();
+  setupPaste();
 }
 
 function rebuildPairDropdown() {
@@ -436,15 +623,250 @@ function removeCondition(i) {
   renderChecklist();
 }
 
-// Settings — default checklist edits
+// ===== Partials =====
+function renderPartials() {
+  const c = document.getElementById('partials-render');
+  if (!partials.length) {
+    c.innerHTML = '';
+  } else {
+    c.innerHTML = partials.map((p,i) => `
+      <div class="partial-row">
+        <div class="field">
+          <label>Close %</label>
+          <input type="number" min="0" max="100" step="1" value="${p.pct ?? ''}" oninput="updatePartial(${i},'pct',this.value)">
+        </div>
+        <div class="field">
+          <label>At RR</label>
+          <input type="number" step="0.1" value="${p.rr ?? ''}" oninput="updatePartial(${i},'rr',this.value)">
+        </div>
+        <button class="partial-del" onclick="removePartial(${i})">×</button>
+      </div>
+    `).join('');
+  }
+  updatePartialSummary();
+}
+
+function addPartial() {
+  if (partials.length >= 4) { alert('Max 4 partials.'); return; }
+  // Default: if first partial, suggest 50% @ 3RR; if runner expected, suggest remainder
+  let defaultPct = 50;
+  const used = partials.reduce((a,p)=>a+(parseFloat(p.pct)||0),0);
+  if (partials.length > 0) defaultPct = Math.max(0, 100 - used);
+  partials.push({ pct: defaultPct, rr: partials.length === 0 ? 3 : '' });
+  renderPartials();
+}
+
+function removePartial(i) {
+  partials.splice(i,1);
+  renderPartials();
+}
+
+function updatePartial(i, field, val) {
+  partials[i][field] = val === '' ? '' : parseFloat(val);
+  updatePartialSummary();
+}
+
+function updatePartialSummary() {
+  const pctEl = document.getElementById('partial-pct');
+  const rrEl = document.getElementById('partial-rr');
+  const warn = document.getElementById('partial-warn');
+  const rrInput = document.getElementById('f-actual-rr');
+  if (!partials.length) {
+    pctEl.textContent = '0%';
+    rrEl.textContent = '—';
+    warn.style.display = 'none';
+    return;
+  }
+  let totalPct = 0, weighted = 0, valid = true;
+  for (const p of partials) {
+    const pct = parseFloat(p.pct);
+    const rr = parseFloat(p.rr);
+    if (isNaN(pct) || isNaN(rr)) { valid = false; continue; }
+    totalPct += pct;
+    weighted += (pct/100) * rr;
+  }
+  pctEl.textContent = totalPct.toFixed(0) + '%';
+  warn.style.display = totalPct > 100.01 ? 'block' : 'none';
+  if (!valid && weighted === 0) {
+    rrEl.textContent = '—';
+  } else {
+    rrEl.textContent = weighted.toFixed(2) + 'R';
+    // Auto-fill actualRR if user hasn't manually overridden (we just always sync — they can edit after)
+    rrInput.value = weighted.toFixed(2);
+  }
+}
+
+// ===== Image handling (multi-image, drag/drop/paste) =====
+function compressImage(file) {
+  return new Promise((resolve, reject) => {
+    if (!file.type.startsWith('image/')) { reject(new Error('Not an image')); return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        // With up to 4 images per doc, keep each smaller to stay under 1MB Firestore limit.
+        // 4 images × ~200KB base64 ≈ 800KB → safe.
+        const MAX_W = 900;
+        const scale = img.width > MAX_W ? MAX_W / img.width : 1;
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        let q = 0.72;
+        let dataUrl = canvas.toDataURL('image/jpeg', q);
+        // If single image still too fat, step down quality
+        while (dataUrl.length * 0.75 > 250_000 && q > 0.4) {
+          q -= 0.1;
+          dataUrl = canvas.toDataURL('image/jpeg', q);
+        }
+        resolve(dataUrl);
+      };
+      img.onerror = () => reject(new Error('Image load failed'));
+      img.src = e.target.result;
+    };
+    reader.onerror = () => reject(new Error('Read failed'));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function handleImages(fileList) {
+  if (!fileList || !fileList.length) return;
+  const remaining = MAX_IMAGES - currentImages.length;
+  if (remaining <= 0) { alert(`Max ${MAX_IMAGES} images per trade.`); return; }
+  const files = Array.from(fileList).filter(f => f.type.startsWith('image/')).slice(0, remaining);
+  if (!files.length) { alert('Please pick image files.'); return; }
+  if (fileList.length > remaining) {
+    // Only show a heads-up; we still add what we can
+    setTimeout(() => alert(`Only added ${files.length} — max ${MAX_IMAGES} per trade.`), 50);
+  }
+  for (const f of files) {
+    try {
+      const dataUrl = await compressImage(f);
+      currentImages.push(dataUrl);
+    } catch(err) {
+      console.error('Image error', err);
+    }
+  }
+  renderImages();
+}
+
+function renderImages() {
+  const grid = document.getElementById('img-grid');
+  const count = document.getElementById('img-count');
+  count.textContent = currentImages.length ? `${currentImages.length}/${MAX_IMAGES}` : '';
+  grid.innerHTML = currentImages.map((src, i) => `
+    <div class="img-tile">
+      <img src="${src}" onclick="openLightbox(currentImages[${i}])">
+      <button class="img-remove" onclick="removeImage(${i})">×</button>
+    </div>
+  `).join('');
+}
+
+function removeImage(i) {
+  if (i === undefined) { currentImages = []; }
+  else { currentImages.splice(i, 1); }
+  renderImages();
+}
+
+// Drag & drop on the drop zone
+function setupImageDnD() {
+  const dz = document.getElementById('img-drop');
+  if (!dz) return;
+  ['dragenter','dragover'].forEach(ev => dz.addEventListener(ev, e => {
+    e.preventDefault(); e.stopPropagation();
+    dz.classList.add('dragover');
+  }));
+  ['dragleave','drop'].forEach(ev => dz.addEventListener(ev, e => {
+    e.preventDefault(); e.stopPropagation();
+    dz.classList.remove('dragover');
+  }));
+  dz.addEventListener('drop', e => {
+    const files = e.dataTransfer && e.dataTransfer.files;
+    if (files && files.length) handleImages(files);
+  });
+}
+
+// Also catch drops anywhere on the page (in case user misses the small zone)
+function setupGlobalDnD() {
+  ['dragover','drop'].forEach(ev => window.addEventListener(ev, e => {
+    // Only intercept drops with files — don't block text drags
+    if (e.dataTransfer && e.dataTransfer.types && e.dataTransfer.types.includes('Files')) {
+      e.preventDefault();
+    }
+  }));
+  window.addEventListener('drop', e => {
+    if (!e.dataTransfer || !e.dataTransfer.files || !e.dataTransfer.files.length) return;
+    // Only auto-add if we're on the log tab — avoid surprises on history etc.
+    if (document.getElementById('tab-log').style.display !== 'none') {
+      handleImages(e.dataTransfer.files);
+    }
+  });
+}
+
+// Paste from clipboard
+function setupPaste() {
+  window.addEventListener('paste', e => {
+    if (document.getElementById('tab-log').style.display === 'none') return;
+    const items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
+    const files = [];
+    for (const it of items) {
+      if (it.kind === 'file' && it.type.startsWith('image/')) {
+        const f = it.getAsFile();
+        if (f) files.push(f);
+      }
+    }
+    if (files.length) {
+      e.preventDefault();
+      handleImages(files);
+    }
+  });
+}
+
+function openLightbox(src) {
+  openLightboxGallery([src], 0);
+}
+let _lbImgs = [], _lbIdx = 0;
+function openLightboxGallery(imgs, idx) {
+  if (!imgs || !imgs.length) return;
+  _lbImgs = imgs; _lbIdx = idx || 0;
+  _lbRender();
+  document.getElementById('lightbox').classList.add('on');
+}
+function _lbRender() {
+  document.getElementById('lightbox-img').src = _lbImgs[_lbIdx];
+  const multi = _lbImgs.length > 1;
+  document.getElementById('lb-prev').style.display = multi ? 'block' : 'none';
+  document.getElementById('lb-next').style.display = multi ? 'block' : 'none';
+  const c = document.getElementById('lb-counter');
+  c.style.display = multi ? 'block' : 'none';
+  c.textContent = `${_lbIdx+1} / ${_lbImgs.length}`;
+}
+function lbStep(d) {
+  if (!_lbImgs.length) return;
+  _lbIdx = (_lbIdx + d + _lbImgs.length) % _lbImgs.length;
+  _lbRender();
+}
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('on');
+}
+// Keyboard nav in lightbox
+window.addEventListener('keydown', e => {
+  if (!document.getElementById('lightbox').classList.contains('on')) return;
+  if (e.key === 'Escape') closeLightbox();
+  if (e.key === 'ArrowLeft') lbStep(-1);
+  if (e.key === 'ArrowRight') lbStep(1);
+});
+
+// ===== Settings =====
 function renderSettings() {
-  // Pair chips
   const pm = document.getElementById('pair-manage');
   pm.innerHTML = pairs.map((p, i) => `
     <span class="pair-chip">${escapeHtml(p)} <span class="x" onclick="removePair(${i})">×</span></span>
   `).join('') || '<span style="font-size:12px;color:var(--text-secondary)">No pairs yet. Add one below.</span>';
 
-  // Default checklist editor
   const sc = document.getElementById('settings-checklist');
   sc.innerHTML = defaultChecklist.length ? defaultChecklist.map((t, i) => `
     <div class="chk-row">
@@ -522,7 +944,7 @@ function setOutcome(o) {
 }
 
 async function saveTrade() {
-  if (!fb) { alert('Not connected to database yet.'); return; }
+  if (!fb || !fbPaths) { alert('Not signed in.'); return; }
   const date=document.getElementById('f-date').value;
   const pair=document.getElementById('f-pair').value;
   if(!date||!pair){alert('Please fill in date and pair.');return;}
@@ -532,11 +954,20 @@ async function saveTrade() {
   let rr=null;
   if(e&&s&&p){const risk=Math.abs(e-s);rr=risk?parseFloat((Math.abs(p-e)/risk).toFixed(2)):null;}
 
-  const id = String(Date.now());
+  const id = editingId || String(Date.now());
   const allMet = currentChecklist.length > 0 && currentChecklist.every(c => c.checked);
+
+  // Preserve original createdAt when editing so sort order is stable
+  const existingCreatedAt = editingId
+    ? (trades.find(t => t.id === editingId)?.createdAt || Date.now())
+    : Date.now();
+
   const trade = {
-    createdAt: Date.now(),
-    date, pair,
+    createdAt: existingCreatedAt,
+    updatedAt: Date.now(),
+    date,
+    time: document.getElementById('f-time').value || null,
+    pair,
     session: document.getElementById('f-session').value,
     dir: document.getElementById('f-dir').value,
     bias: document.getElementById('f-bias').value,
@@ -544,35 +975,111 @@ async function saveTrade() {
     checklistFull: allMet,
     rr,
     actualRR: parseFloat(document.getElementById('f-actual-rr').value)||null,
+    partials: partials.filter(p => p.pct !== '' && p.rr !== '').map(p => ({
+      pct: parseFloat(p.pct), rr: parseFloat(p.rr)
+    })),
     pnl: parseFloat(document.getElementById('f-pnl').value)||null,
     lots: parseFloat(document.getElementById('f-lots').value)||null,
     outcome: selOutcome,
     emotion: document.getElementById('f-emotion').value,
     right: document.getElementById('f-right').value,
-    wrong: document.getElementById('f-wrong').value
+    wrong: document.getElementById('f-wrong').value,
+    image: currentImages[0] || null,
+    images: currentImages.slice()
   };
 
   try {
-    await fb.setDoc(fb.doc(fb.tradesCol, id), trade);
+    await fb.setDoc(fb.doc(fbPaths.tradesCol, id), trade);
+    const wasEditing = !!editingId;
     resetForm();
-    setSyncStatus('ok', 'Trade saved');
+    setSyncStatus('ok', wasEditing ? 'Trade updated' : 'Trade saved');
+    if (wasEditing) showTab('history');
   } catch(err) {
     console.error(err);
-    alert('Failed to save: ' + err.message);
+    if (String(err.message||'').includes('longer than')) {
+      alert('Save failed: image too large for database. Try a smaller image.');
+    } else {
+      alert('Failed to save: ' + err.message);
+    }
   }
 }
 
 function resetForm() {
-  ['f-session','f-dir','f-bias','f-entry','f-sl','f-tp','f-actual-rr','f-pnl','f-lots','f-emotion','f-right','f-wrong'].forEach(id=>{
+  ['f-session','f-dir','f-bias','f-entry','f-sl','f-tp','f-actual-rr','f-pnl','f-lots','f-emotion','f-right','f-wrong','f-time'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.value='';
   });
   resetChecklistFromDefault();
   setOutcome('');
+  partials = [];
+  renderPartials();
+  removeImage();
   document.getElementById('rr-val').textContent='—';
   document.getElementById('rr-warn').style.display='none';
   document.getElementById('chk-warn').style.display='none';
   document.getElementById('f-date').valueAsDate=new Date();
   if (pairs.length) document.getElementById('f-pair').value = pairs[0];
+  // Exit edit mode
+  editingId = null;
+  document.getElementById('edit-banner').classList.remove('on');
+  document.getElementById('save-btn').textContent = 'Save trade';
+}
+
+// ===== Edit =====
+function editTrade(id) {
+  const t = trades.find(x => x.id === id);
+  if (!t) return;
+  editingId = id;
+  // Populate fields
+  document.getElementById('f-date').value = t.date || '';
+  document.getElementById('f-time').value = t.time || '';
+  if (t.pair && pairs.includes(t.pair)) document.getElementById('f-pair').value = t.pair;
+  document.getElementById('f-session').value = t.session || '';
+  document.getElementById('f-dir').value = t.dir || '';
+  document.getElementById('f-bias').value = t.bias || '';
+  document.getElementById('f-entry').value = t.entry ?? '';
+  document.getElementById('f-sl').value = t.sl ?? '';
+  document.getElementById('f-tp').value = t.tp ?? '';
+  document.getElementById('f-lots').value = t.lots ?? '';
+  document.getElementById('f-pnl').value = t.pnl ?? '';
+  document.getElementById('f-actual-rr').value = t.actualRR ?? '';
+  document.getElementById('f-emotion').value = t.emotion || '';
+  document.getElementById('f-right').value = t.right || '';
+  document.getElementById('f-wrong').value = t.wrong || '';
+
+  currentChecklist = Array.isArray(t.checklist) && t.checklist.length
+    ? t.checklist.map(c => ({ text: c.text, checked: !!c.checked }))
+    : defaultChecklist.map(text => ({ text, checked: false }));
+  renderChecklist();
+
+  partials = Array.isArray(t.partials) ? t.partials.map(p => ({ pct: p.pct, rr: p.rr })) : [];
+  renderPartials();
+
+  setOutcome(t.outcome || '');
+
+  if (Array.isArray(t.images) && t.images.length) {
+    currentImages = t.images.slice();
+  } else if (t.image) {
+    currentImages = [t.image];
+  } else {
+    currentImages = [];
+  }
+  renderImages();
+
+  calcRR();
+
+  // Show banner
+  const banner = document.getElementById('edit-banner');
+  banner.classList.add('on');
+  document.getElementById('edit-banner-text').textContent =
+    `Editing trade · ${t.date || ''} · ${t.pair || ''}`;
+  document.getElementById('save-btn').textContent = 'Update trade';
+
+  showTab('log');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function cancelEdit() {
+  resetForm();
 }
 
 function getUsedPairs() {
@@ -597,25 +1104,58 @@ function renderHistory() {
   c.innerHTML=f.map(t=>{
     const badge=t.outcome?`<span class="badge b${t.outcome[0]}">${t.outcome==='be'?'B/E':t.outcome}</span>`:'';
     const pnl=t.pnl!=null?(t.pnl>=0?`<span style="color:var(--text-success)">+$${Number(t.pnl).toFixed(2)}</span>`:`<span style="color:var(--text-danger)">-$${Math.abs(t.pnl).toFixed(2)}</span>`):'';
-    return `<div class="trade-row" id="tr-${t.id}">
-      <div style="flex:1;min-width:0">
-        <div style="font-weight:500;font-size:13px;color:var(--text-primary)">${escapeHtml(t.date)} · ${escapeHtml(t.pair)} · ${escapeHtml(t.dir||'—')} · ${escapeHtml(t.session||'—')}</div>
-        <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">RR: ${t.rr?'1:'+t.rr:'—'} · Bias: ${escapeHtml(t.bias||'—')}</div>
-        ${t.wrong?`<div style="font-size:12px;color:var(--text-secondary);font-style:italic;margin-top:2px">${escapeHtml(t.wrong.substring(0,70))}${t.wrong.length>70?'…':''}</div>`:''}
-      </div>
-      <div style="text-align:right;flex-shrink:0;margin-left:12px;display:flex;flex-direction:column;align-items:flex-end;gap:4px">
-        <button onclick="deleteTrade('${t.id}')" style="font-size:11px;padding:2px 8px;border:0.5px solid var(--border-md);border-radius:var(--radius-md);background:transparent;color:var(--text-secondary);cursor:pointer;font-family:var(--font)">delete</button>
-        ${badge}<div style="font-size:13px;font-weight:500">${pnl}</div>
-        ${t.checklist&&t.checklist.length&&!t.checklistFull?'<div style="font-size:10px;color:var(--text-danger)">incomplete</div>':''}
+    const timeStr = t.time ? ' · ' + escapeHtml(t.time) : '';
+    const partialsStr = (t.partials && t.partials.length)
+      ? ` · ${t.partials.map(p=>`${p.pct}%@${p.rr}R`).join(', ')}`
+      : '';
+    const tImages = Array.isArray(t.images) && t.images.length ? t.images : (t.image ? [t.image] : []);
+    const thumbs = tImages.length
+      ? `<div class="trade-thumbs">${tImages.slice(0,2).map((src,i)=>{
+          const more = (i===1 && tImages.length>2) ? `<span style="position:absolute;inset:0;background:rgba(0,0,0,0.45);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;border-radius:var(--radius-md);pointer-events:none">+${tImages.length-2}</span>` : '';
+          return `<div style="position:relative"><img src="${src}" class="trade-thumb" data-trade="${t.id}" data-idx="${i}">${more}</div>`;
+        }).join('')}</div>`
+      : '';
+    return `<div class="trade-row">
+      <div class="trade-row-top">
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:500;font-size:13px;color:var(--text-primary)">${escapeHtml(t.date||'')}${timeStr} · ${escapeHtml(t.pair||'')} · ${escapeHtml(t.dir||'—')}</div>
+          <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">${escapeHtml(t.session||'—')} · RR: ${t.rr?'1:'+t.rr:'—'}${t.actualRR?' · Actual '+t.actualRR+'R':''}${partialsStr}</div>
+          <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">Bias: ${escapeHtml(t.bias||'—')}</div>
+          ${t.wrong?`<div style="font-size:12px;color:var(--text-secondary);font-style:italic;margin-top:2px">${escapeHtml(t.wrong.substring(0,70))}${t.wrong.length>70?'…':''}</div>`:''}
+        </div>
+        ${thumbs}
+        <div style="text-align:right;flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+          <div style="display:flex;gap:4px">
+            <button onclick="editTrade('${t.id}')" style="font-size:11px;padding:2px 8px;border:0.5px solid var(--border-md);border-radius:var(--radius-md);background:transparent;color:var(--text-info);cursor:pointer;font-family:var(--font)">edit</button>
+            <button onclick="deleteTrade('${t.id}')" style="font-size:11px;padding:2px 8px;border:0.5px solid var(--border-md);border-radius:var(--radius-md);background:transparent;color:var(--text-secondary);cursor:pointer;font-family:var(--font)">delete</button>
+          </div>
+          ${badge}<div style="font-size:13px;font-weight:500">${pnl}</div>
+          ${t.checklist&&t.checklist.length&&!t.checklistFull?'<div style="font-size:10px;color:var(--text-danger)">incomplete</div>':''}
+        </div>
       </div>
     </div>`;
   }).join('');
+
+  // Wire thumbnail clicks: clicking any thumb opens lightbox carousel for that trade.
+  document.querySelectorAll('#hist-list .trade-thumb').forEach(el => {
+    el.onclick = (e) => {
+      e.stopPropagation();
+      const tid = el.getAttribute('data-trade');
+      const idx = parseInt(el.getAttribute('data-idx'), 10) || 0;
+      const tr = trades.find(x => x.id === tid);
+      if (!tr) return;
+      const imgs = Array.isArray(tr.images) && tr.images.length ? tr.images : (tr.image ? [tr.image] : []);
+      openLightboxGallery(imgs, idx);
+    };
+  });
 }
 
 async function deleteTrade(id) {
   if(!confirm('Delete this trade?')) return;
   try {
-    await fb.deleteDoc(fb.doc(fb.tradesCol, id));
+    await fb.deleteDoc(fb.doc(fbPaths.tradesCol, id));
+    // If currently editing the one being deleted, exit edit mode
+    if (editingId === id) resetForm();
   } catch(err) {
     alert('Delete failed: ' + err.message);
   }
@@ -685,7 +1225,7 @@ function showDayDetail(ds) {
   dd.style.display='block';
   dd.innerHTML=`<div style="font-weight:500;margin-bottom:8px;color:var(--text-primary)">${ds} — ${dt.length} trade${dt.length>1?'s':''} · <span style="color:${tp>=0?'var(--text-success)':'var(--text-danger)'}">${tp>=0?'+':''}$${tp.toFixed(2)}</span></div>`+
     dt.map(t=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:0.5px solid var(--border);font-size:12px">
-      <span style="color:var(--text-primary)">${escapeHtml(t.pair)} ${escapeHtml(t.dir||'')} ${escapeHtml(t.session||'')}</span>
+      <span style="color:var(--text-primary)">${escapeHtml(t.pair)}${t.time?' '+escapeHtml(t.time):''} ${escapeHtml(t.dir||'')} ${escapeHtml(t.session||'')}</span>
       <span>${t.outcome?`<span class="badge b${t.outcome[0]}">${t.outcome==='be'?'B/E':t.outcome}</span>`:''} ${t.pnl!=null?`<b style="color:${t.pnl>=0?'var(--text-success)':'var(--text-danger)'}">${t.pnl>=0?'+':''}$${Number(t.pnl).toFixed(2)}</b>`:''}</span>
     </div>`).join('');
 }
@@ -697,7 +1237,7 @@ function renderStats() {
   const wins=f.filter(t=>t.outcome==='win').length;
   const totalPnl=f.reduce((a,t)=>a+(t.pnl||0),0);
   const rrVals=f.filter(t=>t.actualRR).map(t=>t.actualRR);
-  const avgRR=rrVals.length?(rrVals.reduce((a,b)=>a+b,0)/rrVals.length).toFixed(1):'—';
+  const avgRR=rrVals.length?(rrVals.reduce((a,b)=>a+b,0)/rrVals.length).toFixed(2):'—';
   const fullChk=f.filter(t=>t.checklistFull).length;
   document.getElementById('stats-metrics').innerHTML=`
     <div class="metric"><div class="mval">${total}</div><div class="mlbl">Total trades</div></div>
@@ -706,7 +1246,8 @@ function renderStats() {
     <div class="metric"><div class="mval">${avgRR}</div><div class="mlbl">Avg RR</div></div>
     <div class="metric"><div class="mval">${total?Math.round(fullChk/total*100):0}%</div><div class="mlbl">Full checklist</div></div>
   `;
-  const sessions=['London open','NY open','London close','Asian'];
+  // Match new session labels (with time strings)
+  const sessions=['London open (13:00–15:00)','NY open (19:00–22:00)','London close (22:00–00:00)','Asian (05:00–09:00)'];
   document.getElementById('stats-sessions').innerHTML=sessions.map(s=>{
     const st=f.filter(t=>t.session===s);
     if(!st.length)return'';
@@ -754,7 +1295,7 @@ async function importData(ev) {
     for (const t of incoming) {
       const id = t.id ? String(t.id) : String(Date.now() + n);
       const { id: _, ...rest } = t;
-      await fb.setDoc(fb.doc(fb.tradesCol, id), { ...rest, createdAt: rest.createdAt || Date.now() });
+      await fb.setDoc(fb.doc(fbPaths.tradesCol, id), { ...rest, createdAt: rest.createdAt || Date.now() });
       n++;
     }
     if (Array.isArray(data.pairs)) { pairs = data.pairs; }
@@ -776,7 +1317,7 @@ async function deleteAllTrades() {
   if (sure !== 'DELETE') return;
   try {
     for (const t of trades) {
-      await fb.deleteDoc(fb.doc(fb.tradesCol, t.id));
+      await fb.deleteDoc(fb.doc(fbPaths.tradesCol, t.id));
     }
     alert('All trades deleted.');
   } catch(err) {
@@ -800,11 +1341,26 @@ window.setHistPair = setHistPair;
 window.setCalPair = setCalPair;
 window.setStatsPair = setStatsPair;
 window.deleteTrade = deleteTrade;
+window.editTrade = editTrade;
+window.cancelEdit = cancelEdit;
 window.changeMonth = changeMonth;
 window.showDayDetail = showDayDetail;
 window.exportData = exportData;
 window.importData = importData;
 window.deleteAllTrades = deleteAllTrades;
+window.addPartial = addPartial;
+window.removePartial = removePartial;
+window.updatePartial = updatePartial;
+window.handleImages = handleImages;
+window.removeImage = removeImage;
+window.openLightbox = openLightbox;
+window.openLightboxGallery = openLightboxGallery;
+window.lbStep = lbStep;
+window.closeLightbox = closeLightbox;
+window.doLogin = doLogin;
+window.doSignOut = doSignOut;
+// Expose images array so inline thumbnail onclicks in the log form can reference it
+Object.defineProperty(window, 'currentImages', { get: () => currentImages });
 
 init();
 </script>
