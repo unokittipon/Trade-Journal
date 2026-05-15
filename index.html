@@ -128,7 +128,9 @@ textarea{resize:vertical;min-height:56px}
 .lightbox img{max-width:100%;max-height:100%;border-radius:var(--radius-md)}
 /* Partials */
 .partial-row{display:grid;grid-template-columns:1fr 1fr auto;gap:6px;margin-bottom:6px;align-items:end}
+.partial-row.partial-row-4{grid-template-columns:1fr 1fr 1fr 1fr auto}
 .partial-row .field label{font-size:11px}
+.auto-hint{font-size:10px;color:var(--text-info);font-weight:400;font-style:italic}
 .partial-del{padding:6px 10px;font-size:14px;border:0.5px solid var(--border);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-secondary);cursor:pointer;line-height:1;height:fit-content;align-self:end;margin-bottom:1px}
 .partial-del:hover{color:var(--text-danger);border-color:var(--text-danger)}
 .partial-summary{background:var(--bg-secondary);border-radius:var(--radius-md);padding:8px 12px;margin-top:8px;font-size:13px;display:flex;justify-content:space-between;align-items:center}
@@ -136,7 +138,7 @@ textarea{resize:vertical;min-height:56px}
 .edit-banner{background:var(--bg-info);color:var(--text-info);padding:8px 12px;border-radius:var(--radius-md);margin-bottom:1rem;font-size:13px;display:none;align-items:center;justify-content:space-between;gap:10px}
 .edit-banner.on{display:flex}
 .edit-banner button{padding:4px 10px;font-size:12px;border:0.5px solid var(--text-info);border-radius:var(--radius-md);background:transparent;color:var(--text-info);cursor:pointer;font-family:var(--font)}
-@media(max-width:500px){.grid2,.grid3{grid-template-columns:1fr}.metric-row{grid-template-columns:repeat(2,minmax(0,1fr))}.partial-row{grid-template-columns:1fr 1fr auto}}
+@media(max-width:500px){.grid2,.grid3{grid-template-columns:1fr}.metric-row{grid-template-columns:repeat(2,minmax(0,1fr))}.partial-row{grid-template-columns:1fr 1fr auto}.partial-row.partial-row-4{grid-template-columns:1fr 1fr auto;grid-template-areas:"a b del" "c d ."}.partial-row.partial-row-4 .field:nth-child(1){grid-area:a}.partial-row.partial-row-4 .field:nth-child(2){grid-area:b}.partial-row.partial-row-4 .partial-del{grid-area:del}.partial-row.partial-row-4 .field:nth-child(3){grid-area:c}.partial-row.partial-row-4 .field:nth-child(4){grid-area:d}}
 /* Login overlay */
 .login-overlay{position:fixed;inset:0;background:var(--bg-tertiary);z-index:2000;display:flex;align-items:center;justify-content:center;padding:1rem}
 .login-card{background:var(--bg-primary);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;width:100%;max-width:340px}
@@ -250,13 +252,25 @@ textarea{resize:vertical;min-height:56px}
         <div id="rr-warn" class="warn">Below 1:3 minimum — consider skipping</div>
       </div>
       <div class="grid2" style="margin-top:10px">
-        <div class="field"><label>Lot size</label><input type="number" id="f-lots" step="0.01"></div>
-        <div class="field"><label>Net P&L ($)</label><input type="number" id="f-pnl" step="0.01" oninput="updateRRPreview()"></div>
+        <div class="field">
+          <label>Lot size <span id="hint-lots" class="auto-hint" style="display:none">· from partials</span></label>
+          <input type="number" id="f-lots" step="0.01" oninput="onTopFieldInput('lots')">
+        </div>
+        <div class="field">
+          <label>Net P&L ($) <span id="hint-pnl" class="auto-hint" style="display:none">· from partials</span></label>
+          <input type="number" id="f-pnl" step="0.01" oninput="onTopFieldInput('pnl')">
+        </div>
       </div>
       <div id="rr-preview" style="font-size:12px;color:var(--text-secondary);margin-top:6px;display:none"></div>
       <div class="grid2" style="margin-top:10px">
-        <div class="field"><label>Commission ($)</label><input type="number" id="f-commission" step="0.01"></div>
-        <div class="field"><label>Swap ($)</label><input type="number" id="f-swap" step="0.01"></div>
+        <div class="field">
+          <label>Commission ($) <span id="hint-commission" class="auto-hint" style="display:none">· from partials</span></label>
+          <input type="number" id="f-commission" step="0.01" oninput="onTopFieldInput('commission')">
+        </div>
+        <div class="field">
+          <label>Swap ($) <span id="hint-swap" class="auto-hint" style="display:none">· from partials</span></label>
+          <input type="number" id="f-swap" step="0.01" oninput="onTopFieldInput('swap')">
+        </div>
       </div>
     </div>
 
@@ -686,25 +700,34 @@ function renderPartials() {
     c.innerHTML = '';
   } else {
     c.innerHTML = partials.map((p,i) => `
-      <div class="partial-row">
+      <div class="partial-row partial-row-4">
+        <div class="field">
+          <label>Lots</label>
+          <input type="number" step="0.01" value="${p.lots ?? ''}" oninput="updatePartial(${i},'lots',this.value)">
+        </div>
         <div class="field">
           <label>P&L ($)</label>
           <input type="number" step="0.01" value="${p.pnl ?? ''}" oninput="updatePartial(${i},'pnl',this.value)">
         </div>
         <div class="field">
-          <label>Lots (optional)</label>
-          <input type="number" step="0.01" value="${p.lots ?? ''}" oninput="updatePartial(${i},'lots',this.value)">
+          <label>Comm ($)</label>
+          <input type="number" step="0.01" value="${p.commission ?? ''}" oninput="updatePartial(${i},'commission',this.value)">
+        </div>
+        <div class="field">
+          <label>Swap ($)</label>
+          <input type="number" step="0.01" value="${p.swap ?? ''}" oninput="updatePartial(${i},'swap',this.value)">
         </div>
         <button class="partial-del" onclick="removePartial(${i})">×</button>
       </div>
     `).join('');
   }
   updatePartialSummary();
+  syncTopFieldsFromPartials();
 }
 
 function addPartial() {
   if (partials.length >= 4) { alert('Max 4 partials.'); return; }
-  partials.push({ pnl: '', lots: '' });
+  partials.push({ lots: '', pnl: '', commission: '', swap: '' });
   renderPartials();
 }
 
@@ -716,18 +739,69 @@ function removePartial(i) {
 function updatePartial(i, field, val) {
   partials[i][field] = val === '' ? '' : parseFloat(val);
   updatePartialSummary();
+  syncTopFieldsFromPartials();
   updateRRPreview();
 }
 
-// Sum of partial $; returns null if no valid entries.
-function partialsTotalPnl() {
+// Sum helper for any partial field. Returns null if no valid entries.
+function partialsSum(field) {
   if (!partials.length) return null;
   let total = 0, any = false;
   for (const p of partials) {
-    const v = parseFloat(p.pnl);
+    const v = parseFloat(p[field]);
     if (!isNaN(v)) { total += v; any = true; }
   }
   return any ? total : null;
+}
+
+// Backwards-compat alias used elsewhere
+function partialsTotalPnl() { return partialsSum('pnl'); }
+
+// Track which top fields have been manually edited (per trade, reset on form reset/load)
+let manualOverrides = { lots: false, pnl: false, commission: false, swap: false };
+
+const TOP_FIELDS = [
+  { key: 'lots', id: 'f-lots' },
+  { key: 'pnl', id: 'f-pnl' },
+  { key: 'commission', id: 'f-commission' },
+  { key: 'swap', id: 'f-swap' }
+];
+
+function syncTopFieldsFromPartials() {
+  for (const { key, id } of TOP_FIELDS) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    if (manualOverrides[key]) continue; // user took control of this field
+    if (!partials.length) {
+      // No partials = nothing to sync; leave field alone
+      updateAutoHint(key, false);
+      continue;
+    }
+    const sum = partialsSum(key);
+    if (sum == null) {
+      // No values in any partial for this field — clear it (it was previously auto-filled)
+      el.value = '';
+      updateAutoHint(key, true);
+    } else {
+      el.value = (Math.round(sum * 100) / 100).toString();
+      updateAutoHint(key, true);
+    }
+  }
+}
+
+function updateAutoHint(key, on) {
+  const hint = document.getElementById(`hint-${key}`);
+  if (hint) hint.style.display = on ? 'inline' : 'none';
+}
+
+// Called when user types in a top field — marks it as overridden
+function onTopFieldInput(key) {
+  manualOverrides[key] = true;
+  updateAutoHint(key, false);
+  // RR preview re-evaluates
+  if (key === 'pnl') updateRRPreview();
+  // Mismatch warning may change
+  updatePartialSummary();
 }
 
 function updatePartialSummary() {
@@ -738,7 +812,7 @@ function updatePartialSummary() {
     mismatch.style.display = 'none';
     return;
   }
-  const total = partialsTotalPnl();
+  const total = partialsSum('pnl');
   if (total == null) {
     totalEl.textContent = '—';
     mismatch.style.display = 'none';
@@ -746,11 +820,15 @@ function updatePartialSummary() {
   }
   const color = total >= 0 ? 'var(--text-success)' : 'var(--text-danger)';
   totalEl.innerHTML = `<span style="color:${color}">${total>=0?'+':''}$${total.toFixed(2)}</span>`;
-  // Mismatch check vs Net P&L (only warn if both are entered)
-  const pnl = parseFloat(document.getElementById('f-pnl').value);
-  if (!isNaN(pnl) && Math.abs(pnl - total) > 0.01) {
-    mismatch.style.display = 'block';
-    mismatch.textContent = `Partials sum (${total>=0?'+':''}$${total.toFixed(2)}) doesn't match Net P&L (${pnl>=0?'+':''}$${pnl.toFixed(2)})`;
+  // Mismatch only matters if user manually overrode P&L
+  if (manualOverrides.pnl) {
+    const pnl = parseFloat(document.getElementById('f-pnl').value);
+    if (!isNaN(pnl) && Math.abs(pnl - total) > 0.01) {
+      mismatch.style.display = 'block';
+      mismatch.textContent = `Partials sum (${total>=0?'+':''}$${total.toFixed(2)}) doesn't match Net P&L (${pnl>=0?'+':''}$${pnl.toFixed(2)})`;
+    } else {
+      mismatch.style.display = 'none';
+    }
   } else {
     mismatch.style.display = 'none';
   }
@@ -1139,11 +1217,14 @@ async function saveTrade() {
     rr,
     actualRR,
     partials: partials
-      .filter(p => p.pnl !== '' && p.pnl != null && !isNaN(parseFloat(p.pnl)))
-      .map(p => ({
-        pnl: parseFloat(p.pnl),
-        lots: (p.lots === '' || p.lots == null || isNaN(parseFloat(p.lots))) ? null : parseFloat(p.lots)
-      })),
+      .filter(p => {
+        // Keep row if any of the four fields has a real number
+        return ['lots','pnl','commission','swap'].some(k => p[k] !== '' && p[k] != null && !isNaN(parseFloat(p[k])));
+      })
+      .map(p => {
+        const n = v => (v === '' || v == null || isNaN(parseFloat(v))) ? null : parseFloat(v);
+        return { lots: n(p.lots), pnl: n(p.pnl), commission: n(p.commission), swap: n(p.swap) };
+      }),
     pnl: num(document.getElementById('f-pnl').value),
     lots: num(document.getElementById('f-lots').value),
     commission: num(document.getElementById('f-commission').value),
@@ -1179,6 +1260,8 @@ function resetForm() {
   resetChecklistFromDefault();
   setOutcome('');
   partials = [];
+  manualOverrides = { lots: false, pnl: false, commission: false, swap: false };
+  ['lots','pnl','commission','swap'].forEach(k => updateAutoHint(k, false));
   renderPartials();
   removeImage();
   document.getElementById('rr-val').textContent='—';
@@ -1224,13 +1307,27 @@ function editTrade(id) {
   renderChecklist();
 
   partials = Array.isArray(t.partials) ? t.partials.map(p => {
-    // New shape: { pnl, lots }
+    // New shape: { lots, pnl, commission, swap }
     if ('pnl' in p || 'lots' in p) {
-      return { pnl: p.pnl ?? '', lots: p.lots ?? '' };
+      return {
+        lots: p.lots ?? '',
+        pnl: p.pnl ?? '',
+        commission: p.commission ?? '',
+        swap: p.swap ?? ''
+      };
     }
-    // Old shape: { pct, rr } — no $ data to recover. Leave fields blank but keep the row so user can fill them in.
-    return { pnl: '', lots: '' };
+    // Old shape: { pct, rr } — no $ data to recover; blank row
+    return { lots: '', pnl: '', commission: '', swap: '' };
   }) : [];
+  // When loading an existing trade, treat the saved top-level values as manual overrides
+  // so syncTopFieldsFromPartials() won't blow them away on render.
+  manualOverrides = {
+    lots: t.lots != null,
+    pnl: t.pnl != null,
+    commission: t.commission != null,
+    swap: t.swap != null
+  };
+  ['lots','pnl','commission','swap'].forEach(k => updateAutoHint(k, false));
   renderPartials();
 
   setOutcome(t.outcome || '');
