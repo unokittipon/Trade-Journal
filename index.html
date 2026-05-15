@@ -294,8 +294,6 @@ textarea{resize:vertical;min-height:56px}
         </div>
         <div id="partial-mismatch" class="warn" style="color:var(--text-warning)">Partials sum doesn't match Net P&L</div>
       </div>
-
-      <div class="field" style="margin-top:14px"><label>Actual RR achieved</label><input type="number" id="f-actual-rr" step="0.01" oninput="updateRRPreview()"></div>
     </div>
 
     <div class="card">
@@ -1115,9 +1113,7 @@ async function saveRSettings() {
 function updateRRPreview() {
   const el = document.getElementById('rr-preview');
   if (!el) return;
-  const manualRR = document.getElementById('f-actual-rr').value.trim();
   const R = effectiveR();
-  if (manualRR !== '') { el.style.display = 'none'; return; }
   if (R == null) { el.style.display = 'none'; return; }
   // Prefer partial $ sum, fall back to Net P&L
   let source = 'partials';
@@ -1129,8 +1125,7 @@ function updateRRPreview() {
   }
   const rr = pnl / R;
   el.style.display = 'block';
-  el.innerHTML = `<span style="color:${rr>=0?'var(--text-success)':'var(--text-danger)'}">Will save Actual RR as ${rr>=0?'+':''}${rr.toFixed(2)}R</span> · from ${source} ÷ $${R.toFixed(2)}`;
-  // Also refresh the mismatch warning since pnl input may have changed
+  el.innerHTML = `<span style="color:${rr>=0?'var(--text-success)':'var(--text-danger)'}">Actual RR: ${rr>=0?'+':''}${rr.toFixed(2)}R</span> · from ${source} ÷ $${R.toFixed(2)}`;
   updatePartialSummary();
 }
 
@@ -1184,20 +1179,16 @@ async function saveTrade() {
     ? (trades.find(t => t.id === editingId)?.createdAt || Date.now())
     : Date.now();
 
-  // Auto-calc Actual RR. Priority: manual > partials sum > Net P&L. All divided by 1R.
-  let actualRR = parseFloat(document.getElementById('f-actual-rr').value);
-  if (isNaN(actualRR)) {
-    const R = effectiveR();
-    if (R != null && R > 0) {
-      let pnlForRR = partialsTotalPnl();
-      if (pnlForRR == null) {
-        const np = parseFloat(document.getElementById('f-pnl').value);
-        pnlForRR = isNaN(np) ? null : np;
-      }
-      actualRR = (pnlForRR != null) ? parseFloat((pnlForRR / R).toFixed(2)) : null;
-    } else {
-      actualRR = null;
+  // Auto-calc Actual RR. Priority: partials sum > Net P&L. Divided by 1R.
+  let actualRR = null;
+  const R = effectiveR();
+  if (R != null && R > 0) {
+    let pnlForRR = partialsTotalPnl();
+    if (pnlForRR == null) {
+      const np = parseFloat(document.getElementById('f-pnl').value);
+      pnlForRR = isNaN(np) ? null : np;
     }
+    if (pnlForRR != null) actualRR = parseFloat((pnlForRR / R).toFixed(2));
   }
 
   // parseFloat-or-null, but preserves 0 (important for BE trades, 0 swap, etc.)
@@ -1254,7 +1245,7 @@ async function saveTrade() {
 }
 
 function resetForm() {
-  ['f-session','f-dir','f-bias','f-entry','f-sl','f-tp','f-actual-rr','f-pnl','f-lots','f-commission','f-swap','f-emotion','f-right','f-wrong','f-time'].forEach(id=>{
+  ['f-session','f-dir','f-bias','f-entry','f-sl','f-tp','f-pnl','f-lots','f-commission','f-swap','f-emotion','f-right','f-wrong','f-time'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.value='';
   });
   resetChecklistFromDefault();
@@ -1296,7 +1287,6 @@ function editTrade(id) {
   document.getElementById('f-pnl').value = t.pnl ?? '';
   document.getElementById('f-commission').value = t.commission ?? '';
   document.getElementById('f-swap').value = t.swap ?? '';
-  document.getElementById('f-actual-rr').value = t.actualRR ?? '';
   document.getElementById('f-emotion').value = t.emotion || '';
   document.getElementById('f-right').value = t.right || '';
   document.getElementById('f-wrong').value = t.wrong || '';
