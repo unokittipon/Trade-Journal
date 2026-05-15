@@ -275,10 +275,10 @@ textarea{resize:vertical;min-height:56px}
         </div>
         <div id="partials-render"></div>
         <div class="partial-summary">
-          <span style="color:var(--text-secondary)">Weighted RR · <span id="partial-pct" style="font-family:var(--mono)">0%</span> closed</span>
-          <span class="val" id="partial-rr">—</span>
+          <span style="color:var(--text-secondary)">Total from partials</span>
+          <span class="val" id="partial-total">—</span>
         </div>
-        <div id="partial-warn" class="warn">Partials exceed 100% — reduce close %</div>
+        <div id="partial-mismatch" class="warn" style="color:var(--text-warning)">Partials sum doesn't match Net P&L</div>
       </div>
 
       <div class="field" style="margin-top:14px"><label>Actual RR achieved</label><input type="number" id="f-actual-rr" step="0.01" oninput="updateRRPreview()"></div>
@@ -688,12 +688,12 @@ function renderPartials() {
     c.innerHTML = partials.map((p,i) => `
       <div class="partial-row">
         <div class="field">
-          <label>Close %</label>
-          <input type="number" min="0" max="100" step="1" value="${p.pct ?? ''}" oninput="updatePartial(${i},'pct',this.value)">
+          <label>P&L ($)</label>
+          <input type="number" step="0.01" value="${p.pnl ?? ''}" oninput="updatePartial(${i},'pnl',this.value)">
         </div>
         <div class="field">
-          <label>At RR</label>
-          <input type="number" step="0.1" value="${p.rr ?? ''}" oninput="updatePartial(${i},'rr',this.value)">
+          <label>Lots (optional)</label>
+          <input type="number" step="0.01" value="${p.lots ?? ''}" oninput="updatePartial(${i},'lots',this.value)">
         </div>
         <button class="partial-del" onclick="removePartial(${i})">×</button>
       </div>
@@ -704,11 +704,7 @@ function renderPartials() {
 
 function addPartial() {
   if (partials.length >= 4) { alert('Max 4 partials.'); return; }
-  // Default: if first partial, suggest 50% @ 3RR; if runner expected, suggest remainder
-  let defaultPct = 50;
-  const used = partials.reduce((a,p)=>a+(parseFloat(p.pct)||0),0);
-  if (partials.length > 0) defaultPct = Math.max(0, 100 - used);
-  partials.push({ pct: defaultPct, rr: partials.length === 0 ? 3 : '' });
+  partials.push({ pnl: '', lots: '' });
   renderPartials();
 }
 
@@ -720,35 +716,43 @@ function removePartial(i) {
 function updatePartial(i, field, val) {
   partials[i][field] = val === '' ? '' : parseFloat(val);
   updatePartialSummary();
+  updateRRPreview();
+}
+
+// Sum of partial $; returns null if no valid entries.
+function partialsTotalPnl() {
+  if (!partials.length) return null;
+  let total = 0, any = false;
+  for (const p of partials) {
+    const v = parseFloat(p.pnl);
+    if (!isNaN(v)) { total += v; any = true; }
+  }
+  return any ? total : null;
 }
 
 function updatePartialSummary() {
-  const pctEl = document.getElementById('partial-pct');
-  const rrEl = document.getElementById('partial-rr');
-  const warn = document.getElementById('partial-warn');
-  const rrInput = document.getElementById('f-actual-rr');
+  const totalEl = document.getElementById('partial-total');
+  const mismatch = document.getElementById('partial-mismatch');
   if (!partials.length) {
-    pctEl.textContent = '0%';
-    rrEl.textContent = '—';
-    warn.style.display = 'none';
+    totalEl.textContent = '—';
+    mismatch.style.display = 'none';
     return;
   }
-  let totalPct = 0, weighted = 0, valid = true;
-  for (const p of partials) {
-    const pct = parseFloat(p.pct);
-    const rr = parseFloat(p.rr);
-    if (isNaN(pct) || isNaN(rr)) { valid = false; continue; }
-    totalPct += pct;
-    weighted += (pct/100) * rr;
+  const total = partialsTotalPnl();
+  if (total == null) {
+    totalEl.textContent = '—';
+    mismatch.style.display = 'none';
+    return;
   }
-  pctEl.textContent = totalPct.toFixed(0) + '%';
-  warn.style.display = totalPct > 100.01 ? 'block' : 'none';
-  if (!valid && weighted === 0) {
-    rrEl.textContent = '—';
+  const color = total >= 0 ? 'var(--text-success)' : 'var(--text-danger)';
+  totalEl.innerHTML = `<span style="color:${color}">${total>=0?'+':''}$${total.toFixed(2)}</span>`;
+  // Mismatch check vs Net P&L (only warn if both are entered)
+  const pnl = parseFloat(document.getElementById('f-pnl').value);
+  if (!isNaN(pnl) && Math.abs(pnl - total) > 0.01) {
+    mismatch.style.display = 'block';
+    mismatch.textContent = `Partials sum (${total>=0?'+':''}$${total.toFixed(2)}) doesn't match Net P&L (${pnl>=0?'+':''}$${pnl.toFixed(2)})`;
   } else {
-    rrEl.textContent = weighted.toFixed(2) + 'R';
-    // Auto-fill actualRR if user hasn't manually overridden (we just always sync — they can edit after)
-    rrInput.value = weighted.toFixed(2);
+    mismatch.style.display = 'none';
   }
 }
 
@@ -1033,20 +1037,23 @@ async function saveRSettings() {
 function updateRRPreview() {
   const el = document.getElementById('rr-preview');
   if (!el) return;
-  const pnl = parseFloat(document.getElementById('f-pnl').value);
   const manualRR = document.getElementById('f-actual-rr').value.trim();
   const R = effectiveR();
-  if (manualRR !== '') {
-    el.style.display = 'none';
-    return;
-  }
-  if (isNaN(pnl) || R == null) {
-    el.style.display = 'none';
-    return;
+  if (manualRR !== '') { el.style.display = 'none'; return; }
+  if (R == null) { el.style.display = 'none'; return; }
+  // Prefer partial $ sum, fall back to Net P&L
+  let source = 'partials';
+  let pnl = partialsTotalPnl();
+  if (pnl == null) {
+    pnl = parseFloat(document.getElementById('f-pnl').value);
+    source = 'Net P&L';
+    if (isNaN(pnl)) { el.style.display = 'none'; return; }
   }
   const rr = pnl / R;
   el.style.display = 'block';
-  el.innerHTML = `<span style="color:${rr>=0?'var(--text-success)':'var(--text-danger)'}">Will save Actual RR as ${rr>=0?'+':''}${rr.toFixed(2)}R</span> · 1R = $${R.toFixed(2)}`;
+  el.innerHTML = `<span style="color:${rr>=0?'var(--text-success)':'var(--text-danger)'}">Will save Actual RR as ${rr>=0?'+':''}${rr.toFixed(2)}R</span> · from ${source} ÷ $${R.toFixed(2)}`;
+  // Also refresh the mismatch warning since pnl input may have changed
+  updatePartialSummary();
 }
 
 function showTab(t) {
@@ -1099,13 +1106,17 @@ async function saveTrade() {
     ? (trades.find(t => t.id === editingId)?.createdAt || Date.now())
     : Date.now();
 
-  // Auto-calc Actual RR from P&L if user didn't enter one and risk is configured
+  // Auto-calc Actual RR. Priority: manual > partials sum > Net P&L. All divided by 1R.
   let actualRR = parseFloat(document.getElementById('f-actual-rr').value);
   if (isNaN(actualRR)) {
-    const pnl = parseFloat(document.getElementById('f-pnl').value);
     const R = effectiveR();
-    if (!isNaN(pnl) && R != null && R > 0) {
-      actualRR = parseFloat((pnl / R).toFixed(2));
+    if (R != null && R > 0) {
+      let pnlForRR = partialsTotalPnl();
+      if (pnlForRR == null) {
+        const np = parseFloat(document.getElementById('f-pnl').value);
+        pnlForRR = isNaN(np) ? null : np;
+      }
+      actualRR = (pnlForRR != null) ? parseFloat((pnlForRR / R).toFixed(2)) : null;
     } else {
       actualRR = null;
     }
@@ -1127,9 +1138,12 @@ async function saveTrade() {
     checklistFull: allMet,
     rr,
     actualRR,
-    partials: partials.filter(p => p.pct !== '' && p.rr !== '').map(p => ({
-      pct: parseFloat(p.pct), rr: parseFloat(p.rr)
-    })),
+    partials: partials
+      .filter(p => p.pnl !== '' && p.pnl != null && !isNaN(parseFloat(p.pnl)))
+      .map(p => ({
+        pnl: parseFloat(p.pnl),
+        lots: (p.lots === '' || p.lots == null || isNaN(parseFloat(p.lots))) ? null : parseFloat(p.lots)
+      })),
     pnl: num(document.getElementById('f-pnl').value),
     lots: num(document.getElementById('f-lots').value),
     commission: num(document.getElementById('f-commission').value),
@@ -1209,7 +1223,14 @@ function editTrade(id) {
     : defaultChecklist.map(text => ({ text, checked: false }));
   renderChecklist();
 
-  partials = Array.isArray(t.partials) ? t.partials.map(p => ({ pct: p.pct, rr: p.rr })) : [];
+  partials = Array.isArray(t.partials) ? t.partials.map(p => {
+    // New shape: { pnl, lots }
+    if ('pnl' in p || 'lots' in p) {
+      return { pnl: p.pnl ?? '', lots: p.lots ?? '' };
+    }
+    // Old shape: { pct, rr } — no $ data to recover. Leave fields blank but keep the row so user can fill them in.
+    return { pnl: '', lots: '' };
+  }) : [];
   renderPartials();
 
   setOutcome(t.outcome || '');
@@ -1274,7 +1295,14 @@ function renderHistory() {
     const pnl=t.pnl!=null?(t.pnl>=0?`<span style="color:var(--text-success)">+$${Number(t.pnl).toFixed(2)}</span>`:`<span style="color:var(--text-danger)">-$${Math.abs(t.pnl).toFixed(2)}</span>`):'';
     const timeStr = t.time ? ' · ' + escapeHtml(t.time) : '';
     const partialsStr = (t.partials && t.partials.length)
-      ? ` · ${t.partials.map(p=>`${p.pct}%@${p.rr}R`).join(', ')}`
+      ? ` · ${t.partials.map(p => {
+          if ('pnl' in p && p.pnl != null) {
+            return (p.pnl>=0?'+':'') + '$' + Number(p.pnl).toFixed(2);
+          }
+          // Legacy shape fallback
+          if ('pct' in p && 'rr' in p) return `${p.pct}%@${p.rr}R`;
+          return '';
+        }).filter(Boolean).join(', ')}`
       : '';
     // Cost line — only when toggle is on AND at least one cost field has data
     const hasCosts = (t.commission != null) || (t.swap != null);
