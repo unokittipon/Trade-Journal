@@ -251,8 +251,9 @@ textarea{resize:vertical;min-height:56px}
       </div>
       <div class="grid2" style="margin-top:10px">
         <div class="field"><label>Lot size</label><input type="number" id="f-lots" step="0.01"></div>
-        <div class="field"><label>Net P&L ($)</label><input type="number" id="f-pnl" step="0.01"></div>
+        <div class="field"><label>Net P&L ($)</label><input type="number" id="f-pnl" step="0.01" oninput="updateRRPreview()"></div>
       </div>
+      <div id="rr-preview" style="font-size:12px;color:var(--text-secondary);margin-top:6px;display:none"></div>
       <div class="grid2" style="margin-top:10px">
         <div class="field"><label>Commission ($)</label><input type="number" id="f-commission" step="0.01"></div>
         <div class="field"><label>Swap ($)</label><input type="number" id="f-swap" step="0.01"></div>
@@ -280,7 +281,7 @@ textarea{resize:vertical;min-height:56px}
         <div id="partial-warn" class="warn">Partials exceed 100% — reduce close %</div>
       </div>
 
-      <div class="field" style="margin-top:14px"><label>Actual RR achieved</label><input type="number" id="f-actual-rr" step="0.01"></div>
+      <div class="field" style="margin-top:14px"><label>Actual RR achieved</label><input type="number" id="f-actual-rr" step="0.01" oninput="updateRRPreview()"></div>
     </div>
 
     <div class="card">
@@ -367,6 +368,32 @@ textarea{resize:vertical;min-height:56px}
     </div>
 
     <div class="card">
+      <div class="sec-title">Risk per trade (1R)</div>
+      <p style="font-size:12px;color:var(--text-secondary);margin-bottom:10px">Used to auto-calculate Actual RR from your P&L when you save a trade. Manual entries always win.</p>
+      <div class="field" style="margin-bottom:10px">
+        <label>Mode</label>
+        <select id="r-mode" onchange="onRModeChange()">
+          <option value="dollar">$ amount</option>
+          <option value="percent">% of account</option>
+        </select>
+      </div>
+      <div class="field" id="r-dollar-row" style="margin-bottom:10px">
+        <label>1R = $</label>
+        <input type="number" id="r-dollar" step="0.01" placeholder="e.g. 50" oninput="updateREffective()">
+      </div>
+      <div id="r-percent-rows" style="display:none">
+        <div class="grid2">
+          <div class="field"><label>Account size ($)</label><input type="number" id="r-account" step="0.01" oninput="updateREffective()"></div>
+          <div class="field"><label>Risk per trade (%)</label><input type="number" id="r-percent" step="0.01" placeholder="e.g. 1" oninput="updateREffective()"></div>
+        </div>
+        <div style="font-size:12px;color:var(--text-secondary);margin-top:8px">
+          Effective 1R: <span id="r-effective" style="font-family:var(--mono);color:var(--text-primary)">—</span>
+        </div>
+      </div>
+      <button class="save-btn" onclick="saveRSettings()">Save risk settings</button>
+    </div>
+
+    <div class="card">
       <div class="sec-title">Manage default checklist</div>
       <p style="font-size:12px;color:var(--text-secondary);margin-bottom:10px">Conditions saved here appear by default on new trades.</p>
       <div class="checklist" id="settings-checklist"></div>
@@ -438,6 +465,7 @@ const DEFAULT_CHECKLIST = [
 let trades = [];
 let pairs = [...DEFAULT_PAIRS];
 let defaultChecklist = [...DEFAULT_CHECKLIST];
+let rSettings = { mode: 'dollar', dollar: null, account: null, percent: null };
 let currentChecklist = [];
 let partials = []; // {pct, rr}
 let selOutcome = '';
@@ -502,6 +530,7 @@ async function onSignedIn(user) {
       const data = snap.data();
       if (Array.isArray(data.pairs) && data.pairs.length) pairs = data.pairs;
       if (Array.isArray(data.checklist) && data.checklist.length) defaultChecklist = data.checklist;
+      if (data.rSettings) rSettings = { ...rSettings, ...data.rSettings };
     } else {
       await saveSettings();
     }
@@ -563,7 +592,7 @@ document.addEventListener('keydown', e => {
 
 async function saveSettings() {
   if (!fb || !fbPaths) return;
-  await fb.setDoc(fbPaths.settingsDoc, { pairs, checklist: defaultChecklist });
+  await fb.setDoc(fbPaths.settingsDoc, { pairs, checklist: defaultChecklist, rSettings });
 }
 
 function init() {
@@ -901,6 +930,8 @@ function renderSettings() {
       <button class="chk-del" onclick="removeDefaultCondition(${i})">remove</button>
     </div>
   `).join('') : '<div style="font-size:12px;color:var(--text-secondary)">No defaults yet.</div>';
+
+  renderRSettings();
 }
 
 async function addPair() {
@@ -937,6 +968,85 @@ async function removeDefaultCondition(i) {
   defaultChecklist.splice(i, 1);
   renderSettings();
   await saveSettings();
+}
+
+// ===== R settings =====
+function effectiveR() {
+  if (rSettings.mode === 'percent') {
+    const acc = parseFloat(rSettings.account);
+    const pct = parseFloat(rSettings.percent);
+    if (!acc || !pct) return null;
+    return acc * (pct / 100);
+  }
+  const d = parseFloat(rSettings.dollar);
+  return d > 0 ? d : null;
+}
+
+function renderRSettings() {
+  document.getElementById('r-mode').value = rSettings.mode || 'dollar';
+  document.getElementById('r-dollar').value = rSettings.dollar ?? '';
+  document.getElementById('r-account').value = rSettings.account ?? '';
+  document.getElementById('r-percent').value = rSettings.percent ?? '';
+  onRModeChange();
+  updateREffective();
+}
+
+function onRModeChange() {
+  const mode = document.getElementById('r-mode').value;
+  document.getElementById('r-dollar-row').style.display = mode === 'dollar' ? 'flex' : 'none';
+  document.getElementById('r-percent-rows').style.display = mode === 'percent' ? 'block' : 'none';
+}
+
+function updateREffective() {
+  // Update preview using *current form values*, not saved rSettings
+  const mode = document.getElementById('r-mode').value;
+  let val = null;
+  if (mode === 'percent') {
+    const acc = parseFloat(document.getElementById('r-account').value);
+    const pct = parseFloat(document.getElementById('r-percent').value);
+    if (acc && pct) val = acc * (pct / 100);
+  } else {
+    const d = parseFloat(document.getElementById('r-dollar').value);
+    if (d > 0) val = d;
+  }
+  const el = document.getElementById('r-effective');
+  if (el) el.textContent = val != null ? '$' + val.toFixed(2) : '—';
+}
+
+async function saveRSettings() {
+  rSettings = {
+    mode: document.getElementById('r-mode').value,
+    dollar: parseFloat(document.getElementById('r-dollar').value) || null,
+    account: parseFloat(document.getElementById('r-account').value) || null,
+    percent: parseFloat(document.getElementById('r-percent').value) || null
+  };
+  try {
+    await saveSettings();
+    setSyncStatus('ok', 'Risk settings saved');
+    updateRRPreview();
+  } catch(err) {
+    alert('Save failed: ' + err.message);
+  }
+}
+
+// Live preview under P&L on the Log tab
+function updateRRPreview() {
+  const el = document.getElementById('rr-preview');
+  if (!el) return;
+  const pnl = parseFloat(document.getElementById('f-pnl').value);
+  const manualRR = document.getElementById('f-actual-rr').value.trim();
+  const R = effectiveR();
+  if (manualRR !== '') {
+    el.style.display = 'none';
+    return;
+  }
+  if (isNaN(pnl) || R == null) {
+    el.style.display = 'none';
+    return;
+  }
+  const rr = pnl / R;
+  el.style.display = 'block';
+  el.innerHTML = `<span style="color:${rr>=0?'var(--text-success)':'var(--text-danger)'}">Will save Actual RR as ${rr>=0?'+':''}${rr.toFixed(2)}R</span> · 1R = $${R.toFixed(2)}`;
 }
 
 function showTab(t) {
@@ -989,6 +1099,21 @@ async function saveTrade() {
     ? (trades.find(t => t.id === editingId)?.createdAt || Date.now())
     : Date.now();
 
+  // Auto-calc Actual RR from P&L if user didn't enter one and risk is configured
+  let actualRR = parseFloat(document.getElementById('f-actual-rr').value);
+  if (isNaN(actualRR)) {
+    const pnl = parseFloat(document.getElementById('f-pnl').value);
+    const R = effectiveR();
+    if (!isNaN(pnl) && R != null && R > 0) {
+      actualRR = parseFloat((pnl / R).toFixed(2));
+    } else {
+      actualRR = null;
+    }
+  }
+
+  // parseFloat-or-null, but preserves 0 (important for BE trades, 0 swap, etc.)
+  const num = v => { const n = parseFloat(v); return isNaN(n) ? null : n; };
+
   const trade = {
     createdAt: existingCreatedAt,
     updatedAt: Date.now(),
@@ -1001,14 +1126,14 @@ async function saveTrade() {
     checklist: currentChecklist.map(c => ({ text: c.text, checked: !!c.checked })),
     checklistFull: allMet,
     rr,
-    actualRR: parseFloat(document.getElementById('f-actual-rr').value)||null,
+    actualRR,
     partials: partials.filter(p => p.pct !== '' && p.rr !== '').map(p => ({
       pct: parseFloat(p.pct), rr: parseFloat(p.rr)
     })),
-    pnl: parseFloat(document.getElementById('f-pnl').value)||null,
-    lots: parseFloat(document.getElementById('f-lots').value)||null,
-    commission: parseFloat(document.getElementById('f-commission').value)||null,
-    swap: parseFloat(document.getElementById('f-swap').value)||null,
+    pnl: num(document.getElementById('f-pnl').value),
+    lots: num(document.getElementById('f-lots').value),
+    commission: num(document.getElementById('f-commission').value),
+    swap: num(document.getElementById('f-swap').value),
     outcome: selOutcome,
     emotion: document.getElementById('f-emotion').value,
     right: document.getElementById('f-right').value,
@@ -1045,6 +1170,8 @@ function resetForm() {
   document.getElementById('rr-val').textContent='—';
   document.getElementById('rr-warn').style.display='none';
   document.getElementById('chk-warn').style.display='none';
+  const prev = document.getElementById('rr-preview');
+  if (prev) prev.style.display = 'none';
   document.getElementById('f-date').valueAsDate=new Date();
   if (pairs.length) document.getElementById('f-pair').value = pairs[0];
   // Exit edit mode
@@ -1426,6 +1553,10 @@ window.lbStep = lbStep;
 window.closeLightbox = closeLightbox;
 window.doLogin = doLogin;
 window.doSignOut = doSignOut;
+window.onRModeChange = onRModeChange;
+window.updateREffective = updateREffective;
+window.saveRSettings = saveRSettings;
+window.updateRRPreview = updateRRPreview;
 // Expose images array so inline thumbnail onclicks in the log form can reference it
 Object.defineProperty(window, 'currentImages', { get: () => currentImages });
 
