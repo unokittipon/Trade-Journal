@@ -280,14 +280,13 @@ textarea{resize:vertical;min-height:56px}
           <input type="number" id="f-lots" step="0.01" oninput="onTopFieldInput('lots')">
         </div>
         <div class="field">
-          <label>Net P&L ($) <span id="hint-pnl" class="auto-hint" style="display:none">· from partials</span></label>
-          <input type="number" id="f-pnl" step="0.01" oninput="onTopFieldInput('pnl')">
+          <label>Gross P&L ($) <span id="hint-gross" class="auto-hint" style="display:none">· from partials</span></label>
+          <input type="number" id="f-gross" step="0.01" oninput="onTopFieldInput('gross')">
         </div>
       </div>
-      <div id="rr-preview" style="font-size:12px;color:var(--text-secondary);margin-top:6px;display:none"></div>
       <div class="grid2" style="margin-top:10px">
         <div class="field">
-          <label>Commission ($) <span id="hint-commission" class="auto-hint" style="display:none">· from partials</span></label>
+          <label>Commission ($) <span class="auto-hint" style="display:inline">· enter as positive</span><span id="hint-commission" class="auto-hint" style="display:none">· from partials</span></label>
           <input type="number" id="f-commission" step="0.01" oninput="onTopFieldInput('commission')">
         </div>
         <div class="field">
@@ -295,6 +294,11 @@ textarea{resize:vertical;min-height:56px}
           <input type="number" id="f-swap" step="0.01" oninput="onTopFieldInput('swap')">
         </div>
       </div>
+      <div class="field" style="margin-top:10px">
+        <label>Net P&L ($) <span class="auto-hint" style="display:inline">· Gross − Commission + Swap</span></label>
+        <input type="number" id="f-pnl" step="0.01" readonly style="background:var(--bg-tertiary);cursor:not-allowed">
+      </div>
+      <div id="rr-preview" style="font-size:12px;color:var(--text-secondary);margin-top:6px;display:none"></div>
     </div>
 
     <div class="card">
@@ -705,8 +709,8 @@ function renderPartials() {
           <input type="number" step="0.01" value="${p.lots ?? ''}" oninput="updatePartial(${i},'lots',this.value)">
         </div>
         <div class="field">
-          <label>P&L ($)</label>
-          <input type="number" step="0.01" value="${p.pnl ?? ''}" oninput="updatePartial(${i},'pnl',this.value)">
+          <label>Gross ($)</label>
+          <input type="number" step="0.01" value="${p.gross ?? ''}" oninput="updatePartial(${i},'gross',this.value)">
         </div>
         <div class="field">
           <label>Comm ($)</label>
@@ -726,7 +730,7 @@ function renderPartials() {
 
 function addPartial() {
   if (partials.length >= 4) { alert('Max 4 partials.'); return; }
-  partials.push({ lots: '', pnl: '', commission: '', swap: '' });
+  partials.push({ lots: '', gross: '', commission: '', swap: '' });
   renderPartials();
 }
 
@@ -754,14 +758,31 @@ function partialsSum(field) {
 }
 
 // Backwards-compat alias used elsewhere
-function partialsTotalPnl() { return partialsSum('pnl'); }
+function partialsTotalPnl() { return partialsSum('gross'); }
+
+// Compute net P&L from current top fields: gross - commission + swap
+function computeNet() {
+  const num = v => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
+  const gross = parseFloat(document.getElementById('f-gross').value);
+  if (isNaN(gross)) return null;
+  const comm = num(document.getElementById('f-commission').value);
+  const swap = num(document.getElementById('f-swap').value);
+  return gross - comm + swap;
+}
+
+function refreshNetDisplay() {
+  const el = document.getElementById('f-pnl');
+  if (!el) return;
+  const n = computeNet();
+  el.value = (n == null) ? '' : (Math.round(n * 100) / 100).toString();
+}
 
 // Track which top fields have been manually edited (per trade, reset on form reset/load)
-let manualOverrides = { lots: false, pnl: false, commission: false, swap: false };
+let manualOverrides = { lots: false, gross: false, commission: false, swap: false };
 
 const TOP_FIELDS = [
   { key: 'lots', id: 'f-lots' },
-  { key: 'pnl', id: 'f-pnl' },
+  { key: 'gross', id: 'f-gross' },
   { key: 'commission', id: 'f-commission' },
   { key: 'swap', id: 'f-swap' }
 ];
@@ -770,15 +791,13 @@ function syncTopFieldsFromPartials() {
   for (const { key, id } of TOP_FIELDS) {
     const el = document.getElementById(id);
     if (!el) continue;
-    if (manualOverrides[key]) continue; // user took control of this field
+    if (manualOverrides[key]) continue;
     if (!partials.length) {
-      // No partials = nothing to sync; leave field alone
       updateAutoHint(key, false);
       continue;
     }
     const sum = partialsSum(key);
     if (sum == null) {
-      // No values in any partial for this field — clear it (it was previously auto-filled)
       el.value = '';
       updateAutoHint(key, true);
     } else {
@@ -786,6 +805,7 @@ function syncTopFieldsFromPartials() {
       updateAutoHint(key, true);
     }
   }
+  refreshNetDisplay();
 }
 
 function updateAutoHint(key, on) {
@@ -797,9 +817,9 @@ function updateAutoHint(key, on) {
 function onTopFieldInput(key) {
   manualOverrides[key] = true;
   updateAutoHint(key, false);
-  // RR preview re-evaluates
-  if (key === 'pnl') updateRRPreview();
-  // Mismatch warning may change
+  // Recompute Net since gross/commission/swap may have changed
+  if (key === 'gross' || key === 'commission' || key === 'swap') refreshNetDisplay();
+  if (key === 'gross') updateRRPreview();
   updatePartialSummary();
 }
 
@@ -811,7 +831,7 @@ function updatePartialSummary() {
     mismatch.style.display = 'none';
     return;
   }
-  const total = partialsSum('pnl');
+  const total = partialsSum('gross');
   if (total == null) {
     totalEl.textContent = '—';
     mismatch.style.display = 'none';
@@ -819,12 +839,12 @@ function updatePartialSummary() {
   }
   const color = total >= 0 ? 'var(--text-success)' : 'var(--text-danger)';
   totalEl.innerHTML = `<span style="color:${color}">${total>=0?'+':''}$${total.toFixed(2)}</span>`;
-  // Mismatch only matters if user manually overrode P&L
-  if (manualOverrides.pnl) {
-    const pnl = parseFloat(document.getElementById('f-pnl').value);
-    if (!isNaN(pnl) && Math.abs(pnl - total) > 0.01) {
+  // Mismatch warning vs Gross (if user manually overrode it)
+  if (manualOverrides.gross) {
+    const gross = parseFloat(document.getElementById('f-gross').value);
+    if (!isNaN(gross) && Math.abs(gross - total) > 0.01) {
       mismatch.style.display = 'block';
-      mismatch.textContent = `Partials sum (${total>=0?'+':''}$${total.toFixed(2)}) doesn't match Net P&L (${pnl>=0?'+':''}$${pnl.toFixed(2)})`;
+      mismatch.textContent = `Partials sum (${total>=0?'+':''}$${total.toFixed(2)}) doesn't match Gross P&L (${gross>=0?'+':''}$${gross.toFixed(2)})`;
     } else {
       mismatch.style.display = 'none';
     }
@@ -1116,17 +1136,11 @@ function updateRRPreview() {
   if (!el) return;
   const R = effectiveR();
   if (R == null) { el.style.display = 'none'; return; }
-  // Prefer partial $ sum, fall back to Net P&L
-  let source = 'partials';
-  let pnl = partialsTotalPnl();
-  if (pnl == null) {
-    pnl = parseFloat(document.getElementById('f-pnl').value);
-    source = 'Net P&L';
-    if (isNaN(pnl)) { el.style.display = 'none'; return; }
-  }
-  const rr = pnl / R;
+  const net = computeNet();
+  if (net == null) { el.style.display = 'none'; return; }
+  const rr = net / R;
   el.style.display = 'block';
-  el.innerHTML = `<span style="color:${rr>=0?'var(--text-success)':'var(--text-danger)'}">Actual RR: ${rr>=0?'+':''}${rr.toFixed(2)}R</span> · from ${source} ÷ $${R.toFixed(2)}`;
+  el.innerHTML = `<span style="color:${rr>=0?'var(--text-success)':'var(--text-danger)'}">Actual RR: ${rr>=0?'+':''}${rr.toFixed(2)}R</span> · Net P&L ÷ $${R.toFixed(2)}`;
   updatePartialSummary();
 }
 
@@ -1180,20 +1194,22 @@ async function saveTrade() {
     ? (trades.find(t => t.id === editingId)?.createdAt || Date.now())
     : Date.now();
 
-  // Auto-calc Actual RR. Priority: partials sum > Net P&L. Divided by 1R.
+  // parseFloat-or-null, preserves 0
+  const num = v => { const n = parseFloat(v); return isNaN(n) ? null : n; };
+
+  const grossVal = num(document.getElementById('f-gross').value);
+  const commVal = num(document.getElementById('f-commission').value);
+  const swapVal = num(document.getElementById('f-swap').value);
+  // Net = gross - commission + swap (treat missing comm/swap as 0)
+  const netVal = (grossVal == null) ? null
+    : grossVal - (commVal || 0) + (swapVal || 0);
+
+  // Auto-calc Actual RR from Net P&L ÷ 1R
   let actualRR = null;
   const R = effectiveR();
-  if (R != null && R > 0) {
-    let pnlForRR = partialsTotalPnl();
-    if (pnlForRR == null) {
-      const np = parseFloat(document.getElementById('f-pnl').value);
-      pnlForRR = isNaN(np) ? null : np;
-    }
-    if (pnlForRR != null) actualRR = parseFloat((pnlForRR / R).toFixed(2));
+  if (R != null && R > 0 && netVal != null) {
+    actualRR = parseFloat((netVal / R).toFixed(2));
   }
-
-  // parseFloat-or-null, but preserves 0 (important for BE trades, 0 swap, etc.)
-  const num = v => { const n = parseFloat(v); return isNaN(n) ? null : n; };
 
   const trade = {
     createdAt: existingCreatedAt,
@@ -1213,17 +1229,17 @@ async function saveTrade() {
     actualRR,
     partials: partials
       .filter(p => {
-        // Keep row if any of the four fields has a real number
-        return ['lots','pnl','commission','swap'].some(k => p[k] !== '' && p[k] != null && !isNaN(parseFloat(p[k])));
+        return ['lots','gross','commission','swap'].some(k => p[k] !== '' && p[k] != null && !isNaN(parseFloat(p[k])));
       })
       .map(p => {
         const n = v => (v === '' || v == null || isNaN(parseFloat(v))) ? null : parseFloat(v);
-        return { lots: n(p.lots), pnl: n(p.pnl), commission: n(p.commission), swap: n(p.swap) };
+        return { lots: n(p.lots), gross: n(p.gross), commission: n(p.commission), swap: n(p.swap) };
       }),
-    pnl: num(document.getElementById('f-pnl').value),
+    gross: grossVal,
+    pnl: netVal,                 // Net (after costs) — primary P&L stored for stats
     lots: num(document.getElementById('f-lots').value),
-    commission: num(document.getElementById('f-commission').value),
-    swap: num(document.getElementById('f-swap').value),
+    commission: commVal,
+    swap: swapVal,
     outcome: selOutcome,
     emotion: document.getElementById('f-emotion').value,
     right: document.getElementById('f-right').value,
@@ -1249,14 +1265,14 @@ async function saveTrade() {
 }
 
 function resetForm() {
-  ['f-session','f-dir','f-bias','f-entry','f-sl','f-tp','f-pnl','f-lots','f-commission','f-swap','f-emotion','f-right','f-wrong','f-time'].forEach(id=>{
+  ['f-session','f-dir','f-bias','f-entry','f-sl','f-tp','f-pnl','f-gross','f-lots','f-commission','f-swap','f-emotion','f-right','f-wrong','f-time'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.value='';
   });
   resetChecklistFromDefault();
   setOutcome('');
   partials = [];
-  manualOverrides = { lots: false, pnl: false, commission: false, swap: false };
-  ['lots','pnl','commission','swap'].forEach(k => updateAutoHint(k, false));
+  manualOverrides = { lots: false, gross: false, commission: false, swap: false };
+  ['lots','gross','commission','swap'].forEach(k => updateAutoHint(k, false));
   renderPartials();
   removeImage();
   document.getElementById('rr-val').textContent='—';
@@ -1288,7 +1304,9 @@ function editTrade(id) {
   document.getElementById('f-sl').value = t.sl ?? '';
   document.getElementById('f-tp').value = t.tp ?? '';
   document.getElementById('f-lots').value = t.lots ?? '';
-  document.getElementById('f-pnl').value = t.pnl ?? '';
+  // Back-compat: older trades had only `pnl` (which was treated as gross). Migrate display: if `gross` exists, use it; else use `pnl`.
+  const grossLoaded = (t.gross != null) ? t.gross : (t.pnl ?? '');
+  document.getElementById('f-gross').value = grossLoaded;
   document.getElementById('f-commission').value = t.commission ?? '';
   document.getElementById('f-swap').value = t.swap ?? '';
   document.getElementById('f-emotion').value = t.emotion || '';
@@ -1301,27 +1319,26 @@ function editTrade(id) {
   renderChecklist();
 
   partials = Array.isArray(t.partials) ? t.partials.map(p => {
-    // New shape: { lots, pnl, commission, swap }
-    if ('pnl' in p || 'lots' in p) {
+    // New shape: { lots, gross, commission, swap }
+    if ('gross' in p || 'pnl' in p || 'lots' in p) {
       return {
         lots: p.lots ?? '',
-        pnl: p.pnl ?? '',
+        gross: (p.gross != null) ? p.gross : (p.pnl ?? ''),  // back-compat: old partials used `pnl` as gross
         commission: p.commission ?? '',
         swap: p.swap ?? ''
       };
     }
-    // Old shape: { pct, rr } — no $ data to recover; blank row
-    return { lots: '', pnl: '', commission: '', swap: '' };
+    // Oldest shape: { pct, rr } — no $ data to recover; blank row
+    return { lots: '', gross: '', commission: '', swap: '' };
   }) : [];
-  // When loading an existing trade, treat the saved top-level values as manual overrides
-  // so syncTopFieldsFromPartials() won't blow them away on render.
   manualOverrides = {
     lots: t.lots != null,
-    pnl: t.pnl != null,
+    gross: (t.gross != null) || (t.pnl != null),
     commission: t.commission != null,
     swap: t.swap != null
   };
-  ['lots','pnl','commission','swap'].forEach(k => updateAutoHint(k, false));
+  ['lots','gross','commission','swap'].forEach(k => updateAutoHint(k, false));
+  refreshNetDisplay();
   renderPartials();
 
   setOutcome(t.outcome || '');
@@ -1387,10 +1404,10 @@ function renderHistory() {
     const timeStr = t.time ? ' · ' + escapeHtml(t.time) : '';
     const partialsStr = (t.partials && t.partials.length)
       ? ` · ${t.partials.map(p => {
-          if ('pnl' in p && p.pnl != null) {
-            return (p.pnl>=0?'+':'') + '$' + Number(p.pnl).toFixed(2);
+          const v = (p.gross != null) ? p.gross : (p.pnl != null ? p.pnl : null);
+          if (v != null) {
+            return (v>=0?'+':'') + '$' + Number(v).toFixed(2);
           }
-          // Legacy shape fallback
           if ('pct' in p && 'rr' in p) return `${p.pct}%@${p.rr}R`;
           return '';
         }).filter(Boolean).join(', ')}`
@@ -1542,9 +1559,12 @@ function renderStats() {
   // Cost aggregates
   const totalComm=f.reduce((a,t)=>a+(t.commission||0),0);
   const totalSwap=f.reduce((a,t)=>a+(t.swap||0),0);
-  // Gross = Net + Commission − Swap (swap is already added to broker's net; if user enters swap as a cost it'll be negative, so adding back commission and subtracting swap recovers gross)
-  // Simplest definition: gross = net + commission_paid - swap_received. We treat commission as positive cost; swap as the raw value (negative for cost, positive for credit).
-  const grossPnl = totalPnl + totalComm - totalSwap;
+  // Gross: prefer stored gross; for older trades without it, treat pnl as gross (matches how you entered them)
+  const grossPnl = f.reduce((a,t) => {
+    if (t.gross != null) return a + t.gross;
+    if (t.pnl != null) return a + t.pnl;
+    return a;
+  }, 0);
   const costMetrics = showCosts ? `
     <div class="metric"><div class="mval" style="color:${grossPnl>=0?'var(--text-success)':'var(--text-danger)'}">${grossPnl>=0?'+':''}$${grossPnl.toFixed(2)}</div><div class="mlbl">Gross P&L</div></div>
     <div class="metric"><div class="mval" style="color:var(--text-danger)">-$${totalComm.toFixed(2)}</div><div class="mlbl">Commission</div></div>
