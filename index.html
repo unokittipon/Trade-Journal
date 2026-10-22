@@ -423,7 +423,7 @@ textarea{resize:vertical;min-height:56px}
 
     <div class="card">
       <div class="sec-title">Risk per trade (1R)</div>
-      <p style="font-size:12px;color:var(--text-secondary);margin-bottom:10px">Actual RR = Net P&L ÷ 1R. In % mode, 1R is taken from your balance before each trade, so it compounds after wins and losses.</p>
+      <p style="font-size:12px;color:var(--text-secondary);margin-bottom:10px">Actual RR = Net P&L ÷ 1R. In % mode, 1R is taken from your balance + broker credit before each trade, so it compounds after wins, losses and cash flows.</p>
       <div class="field" style="margin-bottom:10px">
         <label>Mode</label>
         <select id="r-mode" onchange="onRModeChange()">
@@ -1393,8 +1393,10 @@ function recomputeDerived() {
     }
     const t = e.t;
     t.balanceBefore = bal;
+    t.creditBefore = credit;
     let R = null;
-    if (rSettings.mode === 'percent') { if (bal != null && bal > 0 && pct > 0) R = bal * pct / 100; }
+    // % mode: 1R is based on balance + broker credit at that moment
+    if (rSettings.mode === 'percent') { const base = (bal || 0) + credit; if (bal != null && base > 0 && pct > 0) R = base * pct / 100; }
     else if (dollarR > 0) R = dollarR;
     if (R && t.pnl != null) t.actualRR = Math.round(t.pnl / R * 100) / 100;
     if (bal != null) bal += (t.pnl || 0);
@@ -1492,8 +1494,10 @@ function effectiveR() {
   if (rSettings.mode === 'percent') {
     const pct = parseFloat(rSettings.percent);
     const editing = editingId ? trades.find(t => t.id === editingId) : null;
-    const base = (editing && editing.balanceBefore != null) ? editing.balanceBefore : currentBalance;
-    if (!base || !pct) return null;
+    const base = (editing && editing.balanceBefore != null)
+      ? editing.balanceBefore + (editing.creditBefore || 0)
+      : (currentBalance != null ? currentBalance + currentCredit : null);
+    if (!base || base <= 0 || !pct) return null;
     return base * (pct / 100);
   }
   const d = parseFloat(rSettings.dollar);
@@ -1523,7 +1527,7 @@ function updateREffective() {
     const acc = parseFloat(document.getElementById('r-account').value);
     const pct = parseFloat(document.getElementById('r-percent').value);
     if (acc && pct) {
-      const bal = acc + trades.reduce((a, t) => a + (t.pnl || 0), 0) + cashflows.reduce((a, c) => a + cashSigned(c), 0);
+      const bal = acc + trades.reduce((a, t) => a + (t.pnl || 0), 0) + cashflows.reduce((a, c) => a + cashSigned(c) + creditSigned(c), 0);
       val = bal * (pct / 100);
     }
   } else {
@@ -2026,7 +2030,7 @@ function renderStats() {
 }
 
 function exportData() {
-  const strip = ({ balanceBefore, balanceAfter, creditAfter, ...rest }) => rest;
+  const strip = ({ balanceBefore, balanceAfter, creditBefore, creditAfter, ...rest }) => rest;
   const blob = new Blob([JSON.stringify({ trades: trades.map(strip), cashflows: cashflows.map(strip), pairs, defaultChecklist }, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
