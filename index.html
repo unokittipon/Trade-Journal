@@ -153,6 +153,8 @@ textarea{resize:vertical;min-height:56px}
 .cost-toggle input{accent-color:var(--text-info);width:14px;height:14px;margin:0}
 .filter-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:1rem}
 .filter-row .pair-filter{margin-bottom:0;flex:1;min-width:0}
+.quote{font-size:12px;font-style:italic;color:var(--text-secondary);margin:2px 0 10px;line-height:1.5}
+.quote span{font-style:normal;opacity:.7}
 /* Sticky notes (post-its) */
 .notes{position:fixed;top:16px;right:16px;width:250px;z-index:900;display:flex;flex-direction:column;gap:8px;max-height:calc(100vh - 32px)}
 .notes-bar{display:flex;align-items:center;gap:6px;align-self:flex-end;background:var(--bg-primary);border:0.5px solid var(--border-md);border-radius:99px;padding:4px 5px 4px 12px;font-size:12px;font-weight:500;color:var(--text-primary);box-shadow:0 2px 8px rgba(0,0,0,0.1)}
@@ -204,6 +206,7 @@ textarea{resize:vertical;min-height:56px}
 
 <div class="container">
   <h1>Trade journal</h1>
+  <p class="quote">"A genius is the man who can do the average thing when everyone around him is losing his mind." <span>— Napoleon</span></p>
   <p class="sub">
     <span class="sync-dot" id="sync-dot"></span>
     <span id="sync-status">Connecting…</span>
