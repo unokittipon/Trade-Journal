@@ -153,6 +153,34 @@ textarea{resize:vertical;min-height:56px}
 .cost-toggle input{accent-color:var(--text-info);width:14px;height:14px;margin:0}
 .filter-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:1rem}
 .filter-row .pair-filter{margin-bottom:0;flex:1;min-width:0}
+/* Sticky notes (post-its) */
+.notes{position:fixed;top:16px;right:16px;width:250px;z-index:900;display:flex;flex-direction:column;gap:8px;max-height:calc(100vh - 32px)}
+.notes-bar{display:flex;align-items:center;gap:6px;align-self:flex-end;background:var(--bg-primary);border:0.5px solid var(--border-md);border-radius:99px;padding:4px 5px 4px 12px;font-size:12px;font-weight:500;color:var(--text-primary);box-shadow:0 2px 8px rgba(0,0,0,0.1)}
+.notes-bar .nb-label{cursor:pointer;user-select:none}
+.notes-bar .nb-count{color:var(--text-secondary);font-weight:400;font-family:var(--mono);font-size:11px}
+.notes-bar button{border:none;background:var(--bg-secondary);color:var(--text-primary);width:24px;height:24px;border-radius:50%;cursor:pointer;font-size:14px;line-height:1;font-family:var(--font)}
+.notes-bar button:hover{background:var(--border)}
+.notes-bar .nb-caret{font-size:11px;transition:transform .15s}
+.notes.collapsed .nb-caret{transform:rotate(-90deg)}
+.notes.collapsed .notes-list{display:none}
+.notes-list{display:flex;flex-direction:column;gap:12px;overflow-y:auto;padding:6px 8px 12px;margin:0 -8px}
+.notes-empty{font-size:12px;color:var(--text-secondary);text-align:right;padding:2px 4px}
+.note{--rot:1deg;background:#fff3a0;color:#3a3410;border-radius:3px;box-shadow:0 6px 16px rgba(0,0,0,0.16),0 1px 3px rgba(0,0,0,0.1);transform:rotate(var(--rot));transition:transform .15s;flex-shrink:0}
+.note:nth-child(even){--rot:-1deg}
+.note:hover,.note:focus-within{transform:rotate(0deg)}
+.note.c1{background:#ffd6e0;color:#4a1f2b}
+.note.c2{background:#cfe8ff;color:#15324d}
+.note.c3{background:#d6f5c9;color:#24401a}
+.note-head{display:flex;align-items:center;gap:4px;padding:6px 6px 0 12px}
+.note input.note-title{background:transparent;border:none;border-radius:0;padding:4px 0;font-size:13px;font-weight:500;color:inherit;flex:1;min-width:0}
+.note input.note-title::placeholder{color:inherit;opacity:0.45}
+.note-status{font-size:10px;opacity:0.55;font-family:var(--mono);white-space:nowrap}
+.note-del{border:none;background:transparent;color:inherit;opacity:0;cursor:pointer;font-size:15px;line-height:1;width:22px;height:22px;border-radius:50%;transition:opacity .15s}
+.note:hover .note-del,.note:focus-within .note-del{opacity:0.5}
+.note-del:hover{opacity:1 !important;background:rgba(0,0,0,0.08)}
+.note textarea.note-body{display:block;background:transparent;border:none;border-radius:0;color:inherit;font-size:13px;line-height:1.55;padding:4px 12px 12px;min-height:90px;resize:vertical}
+.note input:focus,.note textarea:focus{border:none}
+@media(max-width:500px){.notes{top:10px;right:10px;width:calc(100vw - 20px)}.note-del{opacity:0.45}}
 </style>
 </head>
 <body>
@@ -431,6 +459,16 @@ textarea{resize:vertical;min-height:56px}
   </div>
 </div>
 
+<!-- Sticky notes (shown after sign-in) -->
+<div class="notes" id="notes" style="display:none">
+  <div class="notes-bar">
+    <span class="nb-label" onclick="toggleNotes()">📝 Notes <span class="nb-count" id="notes-count"></span></span>
+    <button onclick="addNote()" title="New note">+</button>
+    <button onclick="toggleNotes()" title="Show / hide"><span class="nb-caret">▾</span></button>
+  </div>
+  <div class="notes-list" id="notes-list"></div>
+</div>
+
 <!-- Lightbox -->
 <div class="lightbox" id="lightbox" onclick="closeLightbox()">
   <button id="lb-prev" onclick="event.stopPropagation();lbStep(-1)" style="position:absolute;left:1rem;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.15);color:#fff;border:none;border-radius:50%;width:44px;height:44px;font-size:22px;cursor:pointer;display:none">‹</button>
@@ -495,6 +533,10 @@ let showCosts = false; // toggle for cost breakdown in History/Stats
 let fb = null;
 let fbPaths = null;
 let unsubTrades = null;
+let unsubNotes = null;
+let notes = [];
+let noteTimers = {};
+let pendingNoteFocus = null;
 
 function setSyncStatus(state, text) {
   const dot = document.getElementById('sync-dot');
@@ -519,6 +561,7 @@ window.addEventListener('fb-ready', () => {
 function onSignedOut() {
   // Tear down any active subscription
   if (unsubTrades) { try { unsubTrades(); } catch(_){} unsubTrades = null; }
+  teardownNotes();
   trades = [];
   fbPaths = null;
   document.getElementById('login-overlay').style.display = 'flex';
@@ -536,8 +579,11 @@ async function onSignedIn(user) {
   // Build per-UID paths
   fbPaths = {
     tradesCol: fb.collection(fb.db, "users", user.uid, "trades"),
-    settingsDoc: fb.doc(fb.db, "users", user.uid, "meta", "settings")
+    settingsDoc: fb.doc(fb.db, "users", user.uid, "meta", "settings"),
+    notesCol: fb.collection(fb.db, "users", user.uid, "notes")
   };
+
+  setupNotes();
 
   setSyncStatus('', 'Connected · loading…');
   try {
@@ -574,6 +620,175 @@ async function onSignedIn(user) {
   }
 }
 
+// ===== Sticky notes (multiple, title + body) =====
+function setupNotes() {
+  const el = document.getElementById('notes');
+  // Collapsed state is remembered per browser; default collapsed on narrow screens
+  let collapsed = window.innerWidth < 1200;
+  try {
+    const saved = localStorage.getItem('tj-notes-collapsed');
+    if (saved !== null) collapsed = saved === '1';
+  } catch(_) {}
+  el.classList.toggle('collapsed', collapsed);
+  el.style.display = 'flex';
+
+  if (unsubNotes) { try { unsubNotes(); } catch(_){} }
+  unsubNotes = fb.onSnapshot(fbPaths.notesCol, (qs) => {
+    notes = [];
+    qs.forEach(d => notes.push({ ...d.data(), id: d.id }));
+    notes.sort((a,b) => (a.createdAt||0) - (b.createdAt||0));
+    renderNotes();
+  }, (err) => {
+    console.error(err);
+    document.getElementById('notes-count').textContent = 'sync error';
+  });
+}
+
+function teardownNotes() {
+  if (unsubNotes) { try { unsubNotes(); } catch(_){} unsubNotes = null; }
+  Object.values(noteTimers).forEach(clearTimeout);
+  noteTimers = {};
+  notes = [];
+  document.getElementById('notes').style.display = 'none';
+  document.getElementById('notes-list').innerHTML = '';
+  document.getElementById('notes-count').textContent = '';
+}
+
+function renderNotes() {
+  const list = document.getElementById('notes-list');
+  document.getElementById('notes-count').textContent = notes.length ? notes.length : '';
+
+  // Keyed update: keep existing note elements so typing/focus isn't interrupted
+  const existing = {};
+  list.querySelectorAll('.note').forEach(n => existing[n.dataset.id] = n);
+  const emptyEl = list.querySelector('.notes-empty');
+  if (emptyEl) emptyEl.remove();
+
+  notes.forEach((n, idx) => {
+    let node = existing[n.id];
+    if (!node) node = createNoteEl(n.id);
+    delete existing[n.id];
+    node.className = 'note' + (idx % 4 ? ' c' + (idx % 4) : '');
+    const titleEl = node.querySelector('.note-title');
+    const bodyEl = node.querySelector('.note-body');
+    const busy = noteTimers[n.id] || node.contains(document.activeElement);
+    if (!busy) {
+      if (titleEl.value !== (n.title || '')) titleEl.value = n.title || '';
+      if (bodyEl.value !== (n.text || '')) bodyEl.value = n.text || '';
+    }
+    list.appendChild(node); // moves into correct order
+  });
+  // Remove notes deleted elsewhere
+  Object.values(existing).forEach(n => n.remove());
+
+  if (!notes.length) {
+    list.insertAdjacentHTML('beforeend', '<div class="notes-empty">No notes · tap + to add</div>');
+  }
+
+  if (pendingNoteFocus) {
+    const node = list.querySelector(`.note[data-id="${pendingNoteFocus}"]`);
+    if (node) { node.querySelector('.note-title').focus(); pendingNoteFocus = null; }
+  }
+}
+
+function createNoteEl(id) {
+  const node = document.createElement('div');
+  node.className = 'note';
+  node.dataset.id = id;
+  node.innerHTML = `
+    <div class="note-head">
+      <input class="note-title" placeholder="Title" spellcheck="false">
+      <span class="note-status"></span>
+      <button class="note-del" title="Delete note">×</button>
+    </div>
+    <textarea class="note-body" spellcheck="false"></textarea>`;
+  node.querySelector('.note-title').addEventListener('input', () => queueNoteSave(id));
+  node.querySelector('.note-body').addEventListener('input', () => queueNoteSave(id));
+  // Enter in title jumps to body
+  node.querySelector('.note-title').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); node.querySelector('.note-body').focus(); }
+  });
+  node.querySelector('.note-del').addEventListener('click', () => deleteNote(id));
+  return node;
+}
+
+function noteNode(id) {
+  return document.querySelector(`#notes-list .note[data-id="${id}"]`);
+}
+
+function setNoteStatus(id, t) {
+  const node = noteNode(id);
+  if (node) node.querySelector('.note-status').textContent = t;
+}
+
+function queueNoteSave(id) {
+  setNoteStatus(id, 'saving…');
+  if (noteTimers[id]) clearTimeout(noteTimers[id]);
+  noteTimers[id] = setTimeout(() => saveNote(id), 700);
+}
+
+async function saveNote(id) {
+  if (noteTimers[id]) { clearTimeout(noteTimers[id]); }
+  delete noteTimers[id];
+  const node = noteNode(id);
+  if (!node || !fb || !fbPaths) return;
+  const existing = notes.find(n => n.id === id);
+  try {
+    await fb.setDoc(fb.doc(fbPaths.notesCol, id), {
+      title: node.querySelector('.note-title').value,
+      text: node.querySelector('.note-body').value,
+      createdAt: existing?.createdAt || Date.now(),
+      updatedAt: Date.now()
+    });
+    setNoteStatus(id, 'saved');
+    setTimeout(() => { if (!noteTimers[id]) setNoteStatus(id, ''); }, 1500);
+  } catch(err) {
+    console.error(err);
+    setNoteStatus(id, 'save failed');
+  }
+}
+
+async function addNote() {
+  if (!fb || !fbPaths) return;
+  const el = document.getElementById('notes');
+  if (el.classList.contains('collapsed')) toggleNotes();
+  const id = String(Date.now());
+  pendingNoteFocus = id;
+  try {
+    await fb.setDoc(fb.doc(fbPaths.notesCol, id), { title: '', text: '', createdAt: Date.now(), updatedAt: Date.now() });
+  } catch(err) {
+    pendingNoteFocus = null;
+    alert('Could not add note: ' + err.message);
+  }
+}
+
+async function deleteNote(id) {
+  const node = noteNode(id);
+  const hasContent = node && (node.querySelector('.note-title').value.trim() || node.querySelector('.note-body').value.trim());
+  if (hasContent && !confirm('Delete this note?')) return;
+  if (noteTimers[id]) { clearTimeout(noteTimers[id]); delete noteTimers[id]; }
+  try {
+    await fb.deleteDoc(fb.doc(fbPaths.notesCol, id));
+  } catch(err) {
+    alert('Delete failed: ' + err.message);
+  }
+}
+
+function toggleNotes() {
+  const el = document.getElementById('notes');
+  const collapsed = el.classList.toggle('collapsed');
+  try { localStorage.setItem('tj-notes-collapsed', collapsed ? '1' : '0'); } catch(_) {}
+}
+
+async function flushNotes() {
+  await Promise.all(Object.keys(noteTimers).map(id => saveNote(id)));
+}
+
+// Flush pending note saves if the tab is being hidden/closed
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') flushNotes();
+});
+
 async function doLogin() {
   const email = document.getElementById('login-email').value.trim();
   const pass = document.getElementById('login-pass').value;
@@ -597,6 +812,7 @@ async function doLogin() {
 
 async function doSignOut() {
   if (!confirm('Sign out?')) return;
+  await flushNotes();
   try { await fb.signOut(fb.auth); } catch(err) { alert(err.message); }
 }
 
@@ -1696,6 +1912,8 @@ window.onRModeChange = onRModeChange;
 window.updateREffective = updateREffective;
 window.saveRSettings = saveRSettings;
 window.updateRRPreview = updateRRPreview;
+window.toggleNotes = toggleNotes;
+window.addNote = addNote;
 // Expose images array so inline thumbnail onclicks in the log form can reference it
 Object.defineProperty(window, 'currentImages', { get: () => currentImages });
 
