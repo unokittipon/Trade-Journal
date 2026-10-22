@@ -155,6 +155,10 @@ textarea{resize:vertical;min-height:56px}
 .filter-row .pair-filter{margin-bottom:0;flex:1;min-width:0}
 .quote{font-size:12px;font-style:italic;color:var(--text-secondary);margin:2px 0 10px;line-height:1.5}
 .quote span{font-style:normal;opacity:.7}
+.sbtn.u{background:var(--bg-info);color:var(--text-info);border-color:var(--text-info)}
+.bi{background:var(--bg-info);color:var(--text-info)}
+.bn{background:var(--bg-secondary);color:var(--text-secondary)}
+.skip-meta{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}
 .cf-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:0.5px solid var(--border);font-size:13px}
 .cf-row .cf-main{flex:1;min-width:0}
 .cf-row .cf-sub{font-size:11px;color:var(--text-secondary);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -222,6 +226,7 @@ textarea{resize:vertical;min-height:56px}
 
   <div class="tabs">
     <div class="tab active" onclick="showTab('log')">Log trade</div>
+    <div class="tab" onclick="showTab('skip')">No-trade</div>
     <div class="tab" onclick="showTab('history')">History</div>
     <div class="tab" onclick="showTab('calendar')">Calendar</div>
     <div class="tab" onclick="showTab('stats')">Stats</div>
@@ -364,6 +369,104 @@ textarea{resize:vertical;min-height:56px}
       </div>
     </div>
     <button class="save-btn" id="save-btn" onclick="saveTrade()">Save trade</button>
+  </div>
+
+  <!-- NO-TRADE -->
+  <div id="tab-skip" style="display:none">
+    <div class="edit-banner" id="skip-edit-banner">
+      <span id="skip-edit-text">Editing setup</span>
+      <button onclick="resetSkipForm()">Cancel edit</button>
+    </div>
+
+    <div class="card">
+      <div class="sec-title">Setup you didn't take</div>
+      <div class="grid3" style="margin-bottom:10px">
+        <div class="field"><label>Pair</label><select id="s-pair"></select></div>
+        <div class="field"><label>Date</label><input type="date" id="s-date"></div>
+        <div class="field"><label>Time (GMT+7)</label><input type="time" id="s-time"></div>
+      </div>
+      <div class="grid3">
+        <div class="field"><label>Session</label>
+          <select id="s-session">
+            <option value="">Select</option>
+            <option>London open (13:00–15:00)</option>
+            <option>NY open (19:00–22:00)</option>
+            <option>London close (22:00–00:00)</option>
+            <option>Asian (05:00–09:00)</option>
+          </select>
+        </div>
+        <div class="field"><label>Would-be direction</label>
+          <select id="s-dir"><option value="">Select</option><option>Buy</option><option>Sell</option></select>
+        </div>
+        <div class="field"><label>HTF bias</label>
+          <select id="s-bias"><option value="">Select</option><option>Bullish</option><option>Bearish</option><option>Ranging</option></select>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="sec-title">
+        <span>Why I didn't take it</span>
+        <span id="s-chk-status" style="font-size:11px;color:var(--text-secondary);text-transform:none;letter-spacing:0"></span>
+      </div>
+      <div class="field" style="margin-bottom:12px"><label>Main reason</label><select id="s-reason"></select></div>
+      <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">Conditions that were there</div>
+      <div class="checklist" id="s-checklist"></div>
+    </div>
+
+    <div class="card">
+      <div class="sec-title">If I had taken it</div>
+      <div class="grid3">
+        <div class="field"><label>Entry</label><input type="number" id="s-entry" step="0.00001" oninput="calcSkipRR()"></div>
+        <div class="field"><label>Stop loss</label><input type="number" id="s-sl" step="0.00001" oninput="calcSkipRR()"></div>
+        <div class="field"><label>Take profit</label><input type="number" id="s-tp" step="0.00001" oninput="calcSkipRR()"></div>
+      </div>
+      <div style="margin-top:10px">
+        <div style="font-size:12px;color:var(--text-secondary)">Planned RR</div>
+        <div class="rr-big" id="s-rr-val">—</div>
+      </div>
+      <div style="margin-top:16px">
+        <div style="font-size:11px;font-weight:500;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">What price did</div>
+        <div class="score-bar">
+          <div class="sbtn" id="s-btn-win" onclick="setSkipOutcome('win')">Hit TP</div>
+          <div class="sbtn" id="s-btn-loss" onclick="setSkipOutcome('loss')">Hit SL</div>
+          <div class="sbtn" id="s-btn-be" onclick="setSkipOutcome('be')">B/E</div>
+          <div class="sbtn" id="s-btn-unclear" onclick="setSkipOutcome('unclear')">Unclear</div>
+        </div>
+      </div>
+      <div class="field" style="margin-top:12px">
+        <label>Would-have R <span id="s-r-hint" class="auto-hint" style="display:none">· auto from planned RR</span></label>
+        <input type="number" id="s-r" step="0.01" oninput="skipRManual=true;document.getElementById('s-r-hint').style.display='none'">
+      </div>
+      <div id="s-verdict" style="margin-top:10px;font-size:13px"></div>
+    </div>
+
+    <div class="card">
+      <div class="sec-title">
+        <span>Screenshots</span>
+        <span id="s-img-count" style="font-size:11px;color:var(--text-secondary);text-transform:none;letter-spacing:0"></span>
+      </div>
+      <div class="img-drop" id="s-img-drop" onclick="document.getElementById('s-img-input').click()">
+        Tap, drop, or paste images (up to 4, auto-compressed)
+        <span class="hint">JPEG / PNG · drag from desktop or Ctrl+V to paste</span>
+      </div>
+      <input type="file" id="s-img-input" accept="image/*" multiple style="display:none" onchange="handleSkipImages(event.target.files); event.target.value=''">
+      <div class="img-grid" id="s-img-grid"></div>
+    </div>
+
+    <div class="card">
+      <div class="sec-title">Notes</div>
+      <div class="field"><label>What I saw</label><textarea id="s-saw"></textarea></div>
+      <div class="field" style="margin-top:10px"><label>Lesson</label><textarea id="s-lesson"></textarea></div>
+    </div>
+    <button class="save-btn" id="s-save-btn" onclick="saveSkip()">Save setup</button>
+
+    <div class="card" style="margin-top:1.25rem">
+      <div class="sec-title">No-trade summary</div>
+      <div class="metric-row" id="skip-metrics"></div>
+      <div id="skip-reasons" style="margin-top:12px"></div>
+    </div>
+    <div id="skip-list"></div>
   </div>
 
   <!-- HISTORY -->
@@ -560,6 +663,13 @@ let fb = null;
 let fbPaths = null;
 let unsubTrades = null;
 let cashflows = [];
+let skips = [];
+let unsubSkips = null;
+let skipImages = [];
+let skipChecklist = [];
+let skipOutcome = '';
+let skipEditingId = null;
+let skipRManual = false;
 let unsubCash = null;
 let currentBalance = null;
 let currentCredit = 0; // broker credit, tracked apart from balance // starting balance + all net P&L (null if no starting balance set)
@@ -592,6 +702,8 @@ function onSignedOut() {
   // Tear down any active subscription
   if (unsubTrades) { try { unsubTrades(); } catch(_){} unsubTrades = null; }
   if (unsubCash) { try { unsubCash(); } catch(_){} unsubCash = null; }
+  if (unsubSkips) { try { unsubSkips(); } catch(_){} unsubSkips = null; }
+  skips = [];
   cashflows = [];
   renderCashflows();
   teardownNotes();
@@ -616,7 +728,8 @@ async function onSignedIn(user) {
     tradesCol: fb.collection(fb.db, "users", user.uid, "trades"),
     settingsDoc: fb.doc(fb.db, "users", user.uid, "meta", "settings"),
     notesCol: fb.collection(fb.db, "users", user.uid, "notes"),
-    cashCol: fb.collection(fb.db, "users", user.uid, "cashflows")
+    cashCol: fb.collection(fb.db, "users", user.uid, "cashflows"),
+    skipsCol: fb.collection(fb.db, "users", user.uid, "skips")
   };
 
   setupNotes();
@@ -635,6 +748,7 @@ async function onSignedIn(user) {
     }
     rebuildPairDropdown();
     resetChecklistFromDefault();
+    if (!skipEditingId) resetSkipChecklist();
     renderSettings();
 
     // Live trades subscription
@@ -650,6 +764,17 @@ async function onSignedIn(user) {
     }, (err) => {
       console.error(err);
       setSyncStatus('err', 'Sync error — check console');
+    });
+
+    // Live no-trade subscription
+    unsubSkips = fb.onSnapshot(fbPaths.skipsCol, (qs) => {
+      skips = [];
+      qs.forEach(d => skips.push({ ...normalizeSkip(d.data()), id: d.id }));
+      skips.sort((a, b) => ((b.date || '') + (b.time || '')).localeCompare((a.date || '') + (a.time || '')) || (b.createdAt || 0) - (a.createdAt || 0));
+      if (document.getElementById('tab-skip').style.display !== 'none') renderSkips();
+    }, (err) => {
+      console.error(err);
+      document.getElementById('skip-list').innerHTML = '<div class="empty" style="color:var(--text-danger)">Sync error — check console</div>';
     });
 
     // Live deposits/withdrawals subscription
@@ -887,6 +1012,8 @@ function init() {
   renderPartials();
   renderImages();
   setupImageDnD();
+  setupDropZone('s-img-drop', handleSkipImages);
+  initSkipForm();
   setupGlobalDnD();
   setupPaste();
   setupNumberInputWheelGuard();
@@ -907,6 +1034,12 @@ function rebuildPairDropdown() {
   const cur = sel.value;
   sel.innerHTML = pairs.map(p => `<option>${escapeHtml(p)}</option>`).join('');
   if (pairs.includes(cur)) sel.value = cur;
+  const ssel = document.getElementById('s-pair');
+  if (ssel) {
+    const scur = ssel.value;
+    ssel.innerHTML = sel.innerHTML;
+    if (pairs.includes(scur)) ssel.value = scur;
+  }
 }
 
 function escapeHtml(s) {
@@ -966,6 +1099,46 @@ function normalizeCashflow(c) {
     amount: Math.abs(numOrNull(c.amount) || 0),
     note: str(c.note, 300),
     createdAt: numOrNull(c.createdAt) || Date.now()
+  };
+}
+
+// [label, category]: rule = skipped because a rule said so; emotion = hesitation / execution
+const SKIP_REASONS = [
+  ['Checklist not met', 'rule'],
+  ['RR below 1:3', 'rule'],
+  ['Outside killzone', 'rule'],
+  ['Against HTF bias', 'rule'],
+  ['Already traded today', 'rule'],
+  ['High-impact news', 'rule'],
+  ['No confirmation (MSS)', 'rule'],
+  ['Hesitation / fear', 'emotion'],
+  ['Missed it (not at screen)', 'emotion'],
+  ['Other', 'other']
+];
+function reasonCat(r) { const f = SKIP_REASONS.find(x => x[0] === r); return f ? f[1] : 'other'; }
+
+function normalizeSkip(x) {
+  x = (x && typeof x === 'object') ? x : {};
+  const images = (Array.isArray(x.images) ? x.images : []).map(safeImg).filter(Boolean).slice(0, MAX_IMAGES);
+  return {
+    createdAt: numOrNull(x.createdAt) || Date.now(),
+    updatedAt: numOrNull(x.updatedAt),
+    date: dateStr(x.date),
+    time: timeStr(x.time),
+    pair: str(x.pair, 20),
+    session: str(x.session, 60),
+    dir: ['Buy', 'Sell'].includes(x.dir) ? x.dir : '',
+    bias: ['Bullish', 'Bearish', 'Ranging'].includes(x.bias) ? x.bias : '',
+    reason: SKIP_REASONS.some(r => r[0] === x.reason) ? x.reason : 'Other',
+    checklist: Array.isArray(x.checklist) ? x.checklist.slice(0, 50).map(c => ({ text: str(c && c.text, 300), checked: !!(c && c.checked) })) : [],
+    entry: numOrNull(x.entry), sl: numOrNull(x.sl), tp: numOrNull(x.tp),
+    rr: numOrNull(x.rr),
+    outcome: ['win', 'loss', 'be', 'unclear'].includes(x.outcome) ? x.outcome : '',
+    r: numOrNull(x.r),
+    rManual: !!x.rManual,
+    saw: str(x.saw, 5000),
+    lesson: str(x.lesson, 5000),
+    images
   };
 }
 
@@ -1288,6 +1461,8 @@ function setupGlobalDnD() {
     // Only auto-add if we're on the log tab — avoid surprises on history etc.
     if (document.getElementById('tab-log').style.display !== 'none') {
       handleImages(e.dataTransfer.files);
+    } else if (document.getElementById('tab-skip').style.display !== 'none') {
+      handleSkipImages(e.dataTransfer.files);
     }
   });
 }
@@ -1295,7 +1470,9 @@ function setupGlobalDnD() {
 // Paste from clipboard
 function setupPaste() {
   window.addEventListener('paste', e => {
-    if (document.getElementById('tab-log').style.display === 'none') return;
+    const onLog = document.getElementById('tab-log').style.display !== 'none';
+    const onSkip = document.getElementById('tab-skip').style.display !== 'none';
+    if (!onLog && !onSkip) return;
     const items = e.clipboardData && e.clipboardData.items;
     if (!items) return;
     const files = [];
@@ -1307,7 +1484,7 @@ function setupPaste() {
     }
     if (files.length) {
       e.preventDefault();
-      handleImages(files);
+      if (onSkip) handleSkipImages(files); else handleImages(files);
     }
   });
 }
@@ -1634,11 +1811,290 @@ function updateRRPreview() {
   updatePartialSummary();
 }
 
+// ===== No-trade journal =====
+function setupDropZone(id, handler) {
+  const dz = document.getElementById(id);
+  if (!dz) return;
+  ['dragenter','dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); dz.classList.add('dragover'); }));
+  ['dragleave','drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); dz.classList.remove('dragover'); }));
+  dz.addEventListener('drop', e => { const f = e.dataTransfer && e.dataTransfer.files; if (f && f.length) handler(f); });
+}
+
+function initSkipForm() {
+  document.getElementById('s-reason').innerHTML =
+    SKIP_REASONS.map(([r, cat]) => `<option value="${escapeHtml(r)}">${escapeHtml(r)}${cat === 'emotion' ? ' ·  emotion' : ''}</option>`).join('');
+  document.getElementById('s-reason').addEventListener('change', updateSkipVerdict);
+  document.getElementById('s-date').valueAsDate = new Date();
+  resetSkipChecklist();
+  renderSkipImages();
+}
+
+function resetSkipChecklist() {
+  skipChecklist = defaultChecklist.map(text => ({ text, checked: false }));
+  renderSkipChecklist();
+}
+
+function renderSkipChecklist() {
+  const c = document.getElementById('s-checklist');
+  c.innerHTML = skipChecklist.length ? skipChecklist.map((item, i) => `
+    <label class="chk"><input type="checkbox" ${item.checked ? 'checked' : ''} onchange="toggleSkipCond(${i})"><span>${escapeHtml(item.text)}</span></label>`).join('')
+    : '<div style="font-size:12px;color:var(--text-secondary)">No default conditions — add them in Settings.</div>';
+  const done = skipChecklist.filter(x => x.checked).length;
+  document.getElementById('s-chk-status').textContent = skipChecklist.length ? `${done}/${skipChecklist.length} met` : '';
+}
+
+function toggleSkipCond(i) { skipChecklist[i].checked = !skipChecklist[i].checked; renderSkipChecklist(); }
+
+function skipPlannedRR() {
+  const e = parseFloat(document.getElementById('s-entry').value);
+  const sl = parseFloat(document.getElementById('s-sl').value);
+  const tp = parseFloat(document.getElementById('s-tp').value);
+  if (!e || !sl || !tp) return null;
+  const risk = Math.abs(e - sl);
+  return risk ? Math.round(Math.abs(tp - e) / risk * 100) / 100 : null;
+}
+
+function calcSkipRR() {
+  const rr = skipPlannedRR();
+  document.getElementById('s-rr-val').textContent = rr ? '1 : ' + rr.toFixed(2) : '—';
+  autoSkipR();
+}
+
+function setSkipOutcome(o) {
+  skipOutcome = o;
+  const cls = { win: 'w', loss: 'l', be: 'b', unclear: 'u' };
+  ['win', 'loss', 'be', 'unclear'].forEach(x => {
+    document.getElementById('s-btn-' + x).className = 'sbtn' + (x === o ? ' ' + cls[x] : '');
+  });
+  autoSkipR();
+}
+
+// Fill would-have R from the outcome unless you've typed your own
+function autoSkipR() {
+  if (skipRManual) { updateSkipVerdict(); return; }
+  const el = document.getElementById('s-r');
+  const hint = document.getElementById('s-r-hint');
+  const rr = skipPlannedRR();
+  let v = null;
+  if (skipOutcome === 'loss') v = -1;
+  else if (skipOutcome === 'be') v = 0;
+  else if (skipOutcome === 'win' && rr) v = rr;
+  el.value = v == null ? '' : v;
+  hint.style.display = v == null ? 'none' : 'inline';
+  updateSkipVerdict();
+}
+
+// What the skip says about your process
+function skipVerdict(x) {
+  const cat = reasonCat(x.reason);
+  if (x.outcome === 'be') return ['Neutral', 'bn'];
+  if (x.outcome !== 'win' && x.outcome !== 'loss') return null;
+  const won = x.outcome === 'win';
+  if (cat === 'rule') return won ? ['Rule cost you', 'bb'] : ['Rule saved you', 'bw'];
+  if (cat === 'emotion') return won ? ['Hesitation cost you', 'bl'] : ['Lucky skip', 'bb'];
+  return won ? ['Missed win', 'bb'] : ['Avoided loss', 'bw'];
+}
+
+function updateSkipVerdict() {
+  const v = skipVerdict({ reason: document.getElementById('s-reason').value, outcome: skipOutcome });
+  document.getElementById('s-verdict').innerHTML = v ? `Verdict: <span class="badge ${v[1]}">${v[0]}</span>` : '';
+}
+
+async function handleSkipImages(fileList) {
+  if (!fileList || !fileList.length) return;
+  const remaining = MAX_IMAGES - skipImages.length;
+  if (remaining <= 0) { alert(`Max ${MAX_IMAGES} images per setup.`); return; }
+  const files = Array.from(fileList).filter(f => f.type.startsWith('image/')).slice(0, remaining);
+  for (const f of files) {
+    try { skipImages.push(await compressImage(f)); } catch(err) { console.error('Image error', err); }
+  }
+  renderSkipImages();
+}
+
+function renderSkipImages() {
+  document.getElementById('s-img-count').textContent = skipImages.length ? `${skipImages.length}/${MAX_IMAGES}` : '';
+  document.getElementById('s-img-grid').innerHTML = skipImages.map((src, i) => `
+    <div class="img-tile">
+      <img src="${safeImg(src)}" onclick="openLightboxGallery(skipImages, ${i})">
+      <button class="img-remove" onclick="removeSkipImage(${i})">×</button>
+    </div>`).join('');
+}
+
+function removeSkipImage(i) { skipImages.splice(i, 1); renderSkipImages(); }
+
+async function saveSkip() {
+  if (!fb || !fbPaths) { alert('Not signed in.'); return; }
+  const date = document.getElementById('s-date').value;
+  const pair = document.getElementById('s-pair').value;
+  if (!date || !pair) { alert('Please fill in date and pair.'); return; }
+  const num = id => { const n = parseFloat(document.getElementById(id).value); return isNaN(n) ? null : n; };
+  const id = skipEditingId || String(Date.now());
+  const existing = skipEditingId ? skips.find(x => x.id === skipEditingId) : null;
+  const data = normalizeSkip({
+    createdAt: existing ? existing.createdAt : Date.now(),
+    updatedAt: Date.now(),
+    date, pair,
+    time: document.getElementById('s-time').value || null,
+    session: document.getElementById('s-session').value,
+    dir: document.getElementById('s-dir').value,
+    bias: document.getElementById('s-bias').value,
+    reason: document.getElementById('s-reason').value,
+    checklist: skipChecklist,
+    entry: num('s-entry'), sl: num('s-sl'), tp: num('s-tp'),
+    rr: skipPlannedRR(),
+    outcome: skipOutcome,
+    r: num('s-r'),
+    rManual: skipRManual,
+    saw: document.getElementById('s-saw').value,
+    lesson: document.getElementById('s-lesson').value,
+    images: skipImages
+  });
+  try {
+    await fb.setDoc(fb.doc(fbPaths.skipsCol, id), data);
+    const wasEditing = !!skipEditingId;
+    resetSkipForm();
+    setSyncStatus('ok', wasEditing ? 'Setup updated' : 'Setup saved');
+    document.getElementById('skip-list').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch(err) {
+    console.error(err);
+    alert(String(err.message || '').includes('longer than') ? 'Save failed: images too large. Try fewer or smaller images.' : 'Failed to save: ' + err.message);
+  }
+}
+
+function resetSkipForm() {
+  ['s-time','s-session','s-dir','s-bias','s-entry','s-sl','s-tp','s-r','s-saw','s-lesson'].forEach(id => { document.getElementById(id).value = ''; });
+  document.getElementById('s-reason').selectedIndex = 0;
+  document.getElementById('s-date').valueAsDate = new Date();
+  if (pairs.length) document.getElementById('s-pair').value = pairs[0];
+  skipImages = []; renderSkipImages();
+  skipRManual = false;
+  document.getElementById('s-r-hint').style.display = 'none';
+  setSkipOutcome('');
+  calcSkipRR();
+  resetSkipChecklist();
+  skipEditingId = null;
+  document.getElementById('skip-edit-banner').classList.remove('on');
+  document.getElementById('s-save-btn').textContent = 'Save setup';
+}
+
+function editSkip(id) {
+  const x = skips.find(k => k.id === id);
+  if (!x) return;
+  skipEditingId = id;
+  document.getElementById('s-date').value = x.date || '';
+  document.getElementById('s-time').value = x.time || '';
+  if (x.pair && pairs.includes(x.pair)) document.getElementById('s-pair').value = x.pair;
+  document.getElementById('s-session').value = x.session || '';
+  document.getElementById('s-dir').value = x.dir || '';
+  document.getElementById('s-bias').value = x.bias || '';
+  document.getElementById('s-reason').value = x.reason;
+  document.getElementById('s-entry').value = x.entry ?? '';
+  document.getElementById('s-sl').value = x.sl ?? '';
+  document.getElementById('s-tp').value = x.tp ?? '';
+  document.getElementById('s-saw').value = x.saw || '';
+  document.getElementById('s-lesson').value = x.lesson || '';
+  skipChecklist = x.checklist.length ? x.checklist.map(c => ({ ...c })) : defaultChecklist.map(text => ({ text, checked: false }));
+  renderSkipChecklist();
+  skipImages = x.images.slice(); renderSkipImages();
+  skipRManual = true;               // keep the saved R as-is
+  setSkipOutcome(x.outcome);
+  calcSkipRR();
+  document.getElementById('s-r').value = x.r ?? '';
+  document.getElementById('s-r-hint').style.display = 'none';
+  updateSkipVerdict();
+  document.getElementById('skip-edit-banner').classList.add('on');
+  document.getElementById('skip-edit-text').textContent = `Editing setup · ${x.date} · ${x.pair}`;
+  document.getElementById('s-save-btn').textContent = 'Update setup';
+  showTab('skip');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function deleteSkip(id) {
+  if (!confirm('Delete this setup?')) return;
+  try {
+    await fb.deleteDoc(fb.doc(fbPaths.skipsCol, id));
+    if (skipEditingId === id) resetSkipForm();
+  } catch(err) { alert('Delete failed: ' + err.message); }
+}
+
+function fmtR(v) { return (v >= 0 ? '+' : '') + Number(v).toFixed(2) + 'R'; }
+function rColor(v) { return v > 0 ? 'var(--text-success)' : v < 0 ? 'var(--text-danger)' : 'var(--text-warning)'; }
+
+function renderSkips() {
+  // Summary
+  const resolved = skips.filter(x => ['win', 'loss', 'be'].includes(x.outcome));
+  const wins = resolved.filter(x => x.outcome === 'win').length;
+  const sumR = arr => arr.reduce((a, x) => a + (x.r || 0), 0);
+  const ruleR = sumR(skips.filter(x => reasonCat(x.reason) === 'rule'));
+  const missedR = sumR(skips.filter(x => reasonCat(x.reason) === 'emotion' && (x.r || 0) > 0));
+  document.getElementById('skip-metrics').innerHTML = `
+    <div class="metric"><div class="mval">${skips.length}</div><div class="mlbl">Setups skipped</div></div>
+    <div class="metric"><div class="mval">${resolved.length ? Math.round(wins / resolved.length * 100) + '%' : '—'}</div><div class="mlbl">Would-have win rate</div></div>
+    <div class="metric"><div class="mval" style="color:${rColor(-ruleR)}">${fmtR(-ruleR)}</div><div class="mlbl">Saved by rules</div></div>
+    <div class="metric"><div class="mval" style="color:${missedR > 0 ? 'var(--text-danger)' : 'var(--text-primary)'}">${missedR > 0 ? '-' : ''}${missedR.toFixed(2)}R</div><div class="mlbl">Lost to hesitation</div></div>`;
+
+  const byReason = SKIP_REASONS.map(([r]) => {
+    const g = skips.filter(x => x.reason === r);
+    if (!g.length) return '';
+    const res = g.filter(x => ['win', 'loss', 'be'].includes(x.outcome));
+    const w = res.filter(x => x.outcome === 'win').length;
+    const R = sumR(g);
+    return `<div class="stat-row">
+      <span style="color:var(--text-primary)">${escapeHtml(r)}</span>
+      <span style="color:var(--text-secondary)">${g.length}x · ${res.length ? Math.round(w / res.length * 100) + '% would win' : 'no results'} · <b style="color:${rColor(R)}">${fmtR(R)}</b></span>
+    </div>`;
+  }).join('');
+  document.getElementById('skip-reasons').innerHTML = byReason
+    ? `<div style="font-size:11px;font-weight:500;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">By reason · would-have R</div>${byReason}`
+    : '';
+
+  // List
+  const list = document.getElementById('skip-list');
+  if (!skips.length) { list.innerHTML = '<div class="empty">No skipped setups logged yet</div>'; return; }
+  list.innerHTML = skips.map(x => {
+    const outcome = { win: ['Hit TP', 'bw'], loss: ['Hit SL', 'bl'], be: ['B/E', 'bb'], unclear: ['Unclear', 'bi'] }[x.outcome];
+    const v = skipVerdict(x);
+    const cat = reasonCat(x.reason);
+    const met = x.checklist.filter(c => c.checked).length;
+    const thumbs = x.images.length ? `<div class="trade-thumbs">${x.images.slice(0, 2).map((src, i) =>
+      `<img src="${safeImg(src)}" class="trade-thumb" onclick="openSkipGallery(${jsArg(x.id)}, ${i})">`).join('')}</div>` : '';
+    const note = x.lesson || x.saw;
+    return `<div class="trade-row">
+      <div class="trade-row-top">
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:500;font-size:13px">${escapeHtml(x.date)}${x.time ? ' · ' + escapeHtml(x.time) : ''} · ${escapeHtml(x.pair)} · ${escapeHtml(x.dir || '—')}</div>
+          <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">${escapeHtml(x.session || '—')} · RR: ${x.rr ? '1:' + Number(x.rr) : '—'}${x.checklist.length ? ` · ${met}/${x.checklist.length} conditions` : ''}</div>
+          <div class="skip-meta">
+            <span class="badge ${cat === 'emotion' ? 'bl' : cat === 'rule' ? 'bi' : 'bn'}">${escapeHtml(x.reason)}</span>
+            ${outcome ? `<span class="badge ${outcome[1]}">${outcome[0]}</span>` : ''}
+            ${v ? `<span class="badge ${v[1]}">${v[0]}</span>` : ''}
+          </div>
+          ${note ? `<div style="font-size:12px;color:var(--text-secondary);font-style:italic;margin-top:4px">${escapeHtml(note.substring(0, 90))}${note.length > 90 ? '…' : ''}</div>` : ''}
+        </div>
+        ${thumbs}
+        <div style="text-align:right;flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+          <div style="display:flex;gap:4px">
+            <button onclick="editSkip(${jsArg(x.id)})" style="font-size:11px;padding:2px 8px;border:0.5px solid var(--border-md);border-radius:var(--radius-md);background:transparent;color:var(--text-info);cursor:pointer;font-family:var(--font)">edit</button>
+            <button onclick="deleteSkip(${jsArg(x.id)})" style="font-size:11px;padding:2px 8px;border:0.5px solid var(--border-md);border-radius:var(--radius-md);background:transparent;color:var(--text-secondary);cursor:pointer;font-family:var(--font)">delete</button>
+          </div>
+          ${x.r != null ? `<div style="font-size:13px;font-weight:500;font-family:var(--mono);color:${rColor(x.r)}">${fmtR(x.r)}</div>` : ''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openSkipGallery(id, idx) {
+  const x = skips.find(k => k.id === id);
+  if (x) openLightboxGallery(x.images, idx);
+}
+
 function showTab(t) {
-  ['log','history','calendar','stats','settings'].forEach((x,i) => {
+  ['log','skip','history','calendar','stats','settings'].forEach((x,i) => {
     document.getElementById('tab-'+x).style.display = x===t ? 'block' : 'none';
     document.querySelectorAll('.tab')[i].classList.toggle('active', x===t);
   });
+  if(t==='skip') renderSkips();
   if(t==='history') renderHistory();
   if(t==='calendar') renderCalendar();
   if(t==='stats') renderStats();
@@ -2095,7 +2551,7 @@ function renderStats() {
 
 function exportData() {
   const strip = ({ balanceBefore, balanceAfter, creditBefore, creditAfter, ...rest }) => rest;
-  const blob = new Blob([JSON.stringify({ trades: trades.map(strip), cashflows: cashflows.map(strip), pairs, defaultChecklist }, null, 2)], { type: 'application/json' });
+  const blob = new Blob([JSON.stringify({ trades: trades.map(strip), cashflows: cashflows.map(strip), skips, pairs, defaultChecklist }, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `trade-journal-${new Date().toISOString().slice(0,10)}.json`;
@@ -2114,12 +2570,18 @@ async function importData(ev) {
     const txt = await file.text();
     const data = JSON.parse(txt);
     const incoming = Array.isArray(data) ? data : (data.trades || []);
-    if (!incoming.length) { alert('No trades found in file.'); return; }
+    if (!incoming.length && !(data.skips && data.skips.length) && !(data.cashflows && data.cashflows.length)) { alert('Nothing to import in this file.'); return; }
     let n = 0;
     for (const t of incoming) {
       const id = (t && SAFE_ID.test(String(t.id))) ? String(t.id) : String(Date.now() + n);
       await fb.setDoc(fb.doc(fbPaths.tradesCol, id), normalizeTrade(t));
       n++;
+    }
+    if (Array.isArray(data.skips)) {
+      for (const x of data.skips) {
+        const sid = (x && SAFE_ID.test(String(x.id))) ? String(x.id) : String(Date.now() + n++);
+        await fb.setDoc(fb.doc(fbPaths.skipsCol, sid), normalizeSkip(x));
+      }
     }
     if (Array.isArray(data.cashflows)) {
       for (const c of data.cashflows) {
@@ -2198,6 +2660,17 @@ window.addNote = addNote;
 window.addCashflow = addCashflow;
 window.deleteCashflow = deleteCashflow;
 window.goToCashflows = goToCashflows;
+window.calcSkipRR = calcSkipRR;
+window.setSkipOutcome = setSkipOutcome;
+window.toggleSkipCond = toggleSkipCond;
+window.handleSkipImages = handleSkipImages;
+window.removeSkipImage = removeSkipImage;
+window.saveSkip = saveSkip;
+window.resetSkipForm = resetSkipForm;
+window.editSkip = editSkip;
+window.deleteSkip = deleteSkip;
+window.openSkipGallery = openSkipGallery;
+Object.defineProperty(window, 'skipImages', { get: () => skipImages });
 // Expose images array so inline thumbnail onclicks in the log form can reference it
 Object.defineProperty(window, 'currentImages', { get: () => currentImages });
 
