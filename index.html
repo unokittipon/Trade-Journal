@@ -155,6 +155,7 @@ textarea{resize:vertical;min-height:56px}
 .filter-row .pair-filter{margin-bottom:0;flex:1;min-width:0}
 .quote{font-size:12px;font-style:italic;color:var(--text-secondary);margin:2px 0 10px;line-height:1.5}
 .quote span{font-style:normal;opacity:.7}
+.bal-pill{font-size:12px;font-family:var(--mono);color:var(--text-primary);background:var(--bg-primary);border:0.5px solid var(--border);border-radius:99px;padding:2px 10px}
 /* Sticky notes (post-its) */
 .notes{position:fixed;top:16px;right:16px;width:250px;z-index:900;display:flex;flex-direction:column;gap:8px;max-height:calc(100vh - 32px)}
 .notes-bar{display:flex;align-items:center;gap:6px;align-self:flex-end;background:var(--bg-primary);border:0.5px solid var(--border-md);border-radius:99px;padding:4px 5px 4px 12px;font-size:12px;font-weight:500;color:var(--text-primary);box-shadow:0 2px 8px rgba(0,0,0,0.1)}
@@ -210,6 +211,7 @@ textarea{resize:vertical;min-height:56px}
   <p class="sub">
     <span class="sync-dot" id="sync-dot"></span>
     <span id="sync-status">Connecting…</span>
+    <span class="bal-pill" id="bal-pill" style="display:none"></span>
     <span class="user-pill" id="user-pill" style="display:none"></span>
     <button class="signout-btn" id="signout-btn" onclick="doSignOut()" style="display:none">Sign out</button>
   </p>
@@ -417,7 +419,7 @@ textarea{resize:vertical;min-height:56px}
 
     <div class="card">
       <div class="sec-title">Risk per trade (1R)</div>
-      <p style="font-size:12px;color:var(--text-secondary);margin-bottom:10px">Used to auto-calculate Actual RR from your P&L when you save a trade. Manual entries always win.</p>
+      <p style="font-size:12px;color:var(--text-secondary);margin-bottom:10px">Actual RR = Net P&L ÷ 1R. In % mode, 1R is taken from your balance before each trade, so it compounds after wins and losses.</p>
       <div class="field" style="margin-bottom:10px">
         <label>Mode</label>
         <select id="r-mode" onchange="onRModeChange()">
@@ -431,11 +433,11 @@ textarea{resize:vertical;min-height:56px}
       </div>
       <div id="r-percent-rows" style="display:none">
         <div class="grid2">
-          <div class="field"><label>Account size ($)</label><input type="number" id="r-account" step="0.01" oninput="updateREffective()"></div>
+          <div class="field"><label>Starting balance ($)</label><input type="number" id="r-account" step="0.01" oninput="updateREffective()"></div>
           <div class="field"><label>Risk per trade (%)</label><input type="number" id="r-percent" step="0.01" placeholder="e.g. 1" oninput="updateREffective()"></div>
         </div>
         <div style="font-size:12px;color:var(--text-secondary);margin-top:8px">
-          Effective 1R: <span id="r-effective" style="font-family:var(--mono);color:var(--text-primary)">—</span>
+          1R now: <span id="r-effective" style="font-family:var(--mono);color:var(--text-primary)">—</span>
         </div>
       </div>
       <button class="save-btn" onclick="saveRSettings()">Save risk settings</button>
@@ -536,6 +538,7 @@ let showCosts = false; // toggle for cost breakdown in History/Stats
 let fb = null;
 let fbPaths = null;
 let unsubTrades = null;
+let currentBalance = null; // starting balance + all net P&L (null if no starting balance set)
 let unsubNotes = null;
 let notes = [];
 let noteTimers = {};
@@ -566,6 +569,8 @@ function onSignedOut() {
   if (unsubTrades) { try { unsubTrades(); } catch(_){} unsubTrades = null; }
   teardownNotes();
   trades = [];
+  currentBalance = null;
+  renderBalance();
   fbPaths = null;
   document.getElementById('login-overlay').style.display = 'flex';
   document.getElementById('user-pill').style.display = 'none';
@@ -609,6 +614,7 @@ async function onSignedIn(user) {
       trades = [];
       qs.forEach(d => trades.push({ ...d.data(), id: d.id }));
       trades.sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
+      recomputeDerived();
       setSyncStatus('ok', `Synced · ${trades.length} trade${trades.length===1?'':'s'}`);
       if (document.getElementById('tab-history').style.display !== 'none') renderHistory();
       if (document.getElementById('tab-calendar').style.display !== 'none') renderCalendar();
@@ -1291,12 +1297,63 @@ async function removeDefaultCondition(i) {
 }
 
 // ===== R settings =====
+function fmtMoney(n) {
+  return (n < 0 ? '-$' : '$') + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// Trades in the order they happened: date, then entry time, then creation time
+function chronoTrades() {
+  const key = t => (t.date || '') + 'T' + (t.time || '99:99');
+  return trades.slice().sort((a, b) => {
+    const ka = key(a), kb = key(b);
+    if (ka < kb) return -1;
+    if (ka > kb) return 1;
+    return (a.createdAt || 0) - (b.createdAt || 0);
+  });
+}
+
+// Walk trades chronologically: balance before/after each trade, and Actual RR
+// against the 1R that applied at that moment (compounding in % mode).
+function recomputeDerived() {
+  const start = parseFloat(rSettings.account);
+  const pct = parseFloat(rSettings.percent);
+  const dollarR = parseFloat(rSettings.dollar);
+  let bal = (start > 0) ? start : null;
+  for (const t of chronoTrades()) {
+    t.balanceBefore = bal;
+    let R = null;
+    if (rSettings.mode === 'percent') { if (bal != null && pct > 0) R = bal * pct / 100; }
+    else if (dollarR > 0) R = dollarR;
+    if (R && t.pnl != null) t.actualRR = Math.round(t.pnl / R * 100) / 100;
+    if (bal != null) bal += (t.pnl || 0);
+    t.balanceAfter = bal;
+  }
+  currentBalance = bal;
+  renderBalance();
+}
+
+function renderBalance() {
+  const el = document.getElementById('bal-pill');
+  if (!el) return;
+  if (currentBalance == null) { el.style.display = 'none'; return; }
+  el.style.display = 'inline-block';
+  el.textContent = 'Balance ' + fmtMoney(currentBalance);
+}
+
+function refreshVisibleTabs() {
+  if (document.getElementById('tab-history').style.display !== 'none') renderHistory();
+  if (document.getElementById('tab-calendar').style.display !== 'none') renderCalendar();
+  if (document.getElementById('tab-stats').style.display !== 'none') renderStats();
+}
+
+// 1R for the trade on the Log form. % mode: balance before this trade × risk %.
 function effectiveR() {
   if (rSettings.mode === 'percent') {
-    const acc = parseFloat(rSettings.account);
     const pct = parseFloat(rSettings.percent);
-    if (!acc || !pct) return null;
-    return acc * (pct / 100);
+    const editing = editingId ? trades.find(t => t.id === editingId) : null;
+    const base = (editing && editing.balanceBefore != null) ? editing.balanceBefore : currentBalance;
+    if (!base || !pct) return null;
+    return base * (pct / 100);
   }
   const d = parseFloat(rSettings.dollar);
   return d > 0 ? d : null;
@@ -1324,7 +1381,10 @@ function updateREffective() {
   if (mode === 'percent') {
     const acc = parseFloat(document.getElementById('r-account').value);
     const pct = parseFloat(document.getElementById('r-percent').value);
-    if (acc && pct) val = acc * (pct / 100);
+    if (acc && pct) {
+      const bal = acc + trades.reduce((a, t) => a + (t.pnl || 0), 0);
+      val = bal * (pct / 100);
+    }
   } else {
     const d = parseFloat(document.getElementById('r-dollar').value);
     if (d > 0) val = d;
@@ -1342,6 +1402,8 @@ async function saveRSettings() {
   };
   try {
     await saveSettings();
+    recomputeDerived();
+    refreshVisibleTabs();
     setSyncStatus('ok', 'Risk settings saved');
     updateRRPreview();
   } catch(err) {
@@ -1649,7 +1711,7 @@ function renderHistory() {
         <div style="flex:1;min-width:0">
           <div style="font-weight:500;font-size:13px;color:var(--text-primary)">${escapeHtml(t.date||'')}${timeStr} · ${escapeHtml(t.pair||'')} · ${escapeHtml(t.dir||'—')}</div>
           <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">${escapeHtml(t.session||'—')} · RR: ${t.rr?'1:'+t.rr:'—'}${t.actualRR?' · Actual '+t.actualRR+'R':''}${partialsStr}</div>
-          <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">Bias: ${escapeHtml(t.bias||'—')}</div>
+          <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">Bias: ${escapeHtml(t.bias||'—')}${t.balanceAfter!=null&&t.balanceBefore!=null?` · Bal ${fmtMoney(t.balanceBefore)} → ${fmtMoney(t.balanceAfter)}`:''}</div>
           ${costLine}
           ${t.wrong?`<div style="font-size:12px;color:var(--text-secondary);font-style:italic;margin-top:2px">${escapeHtml(t.wrong.substring(0,70))}${t.wrong.length>70?'…':''}</div>`:''}
         </div>
@@ -1793,6 +1855,7 @@ function renderStats() {
     <div class="metric"><div class="mval">${total}</div><div class="mlbl">Total trades</div></div>
     <div class="metric"><div class="mval">${total?Math.round(wins/total*100):0}%</div><div class="mlbl">Win rate</div></div>
     <div class="metric"><div class="mval" style="color:${totalPnl>=0?'var(--text-success)':'var(--text-danger)'}">${totalPnl>=0?'+':''}$${totalPnl.toFixed(2)}</div><div class="mlbl">Net P&L</div></div>
+    ${currentBalance!=null?`<div class="metric"><div class="mval">${fmtMoney(currentBalance)}</div><div class="mlbl">Balance</div></div>`:''}
     <div class="metric"><div class="mval">${avgRR}</div><div class="mlbl">Avg RR</div></div>
     <div class="metric"><div class="mval">${total?Math.round(fullChk/total*100):0}%</div><div class="mlbl">Full checklist</div></div>
     ${costMetrics}
