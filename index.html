@@ -155,7 +155,11 @@ textarea{resize:vertical;min-height:56px}
 .filter-row .pair-filter{margin-bottom:0;flex:1;min-width:0}
 .quote{font-size:12px;font-style:italic;color:var(--text-secondary);margin:2px 0 10px;line-height:1.5}
 .quote span{font-style:normal;opacity:.7}
-.bal-pill{font-size:12px;font-family:var(--mono);color:var(--text-primary);background:var(--bg-primary);border:0.5px solid var(--border);border-radius:99px;padding:2px 10px}
+.cf-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:0.5px solid var(--border);font-size:13px}
+.cf-row .cf-main{flex:1;min-width:0}
+.cf-row .cf-sub{font-size:11px;color:var(--text-secondary);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cf-row .cf-amt{font-family:var(--mono);font-weight:500;white-space:nowrap}
+.bal-pill{cursor:pointer;font-size:12px;font-family:var(--mono);color:var(--text-primary);background:var(--bg-primary);border:0.5px solid var(--border);border-radius:99px;padding:2px 10px}
 /* Sticky notes (post-its) */
 .notes{position:fixed;top:16px;right:16px;width:250px;z-index:900;display:flex;flex-direction:column;gap:8px;max-height:calc(100vh - 32px)}
 .notes-bar{display:flex;align-items:center;gap:6px;align-self:flex-end;background:var(--bg-primary);border:0.5px solid var(--border-md);border-radius:99px;padding:4px 5px 4px 12px;font-size:12px;font-weight:500;color:var(--text-primary);box-shadow:0 2px 8px rgba(0,0,0,0.1)}
@@ -211,7 +215,7 @@ textarea{resize:vertical;min-height:56px}
   <p class="sub">
     <span class="sync-dot" id="sync-dot"></span>
     <span id="sync-status">Connecting…</span>
-    <span class="bal-pill" id="bal-pill" style="display:none"></span>
+    <span class="bal-pill" id="bal-pill" style="display:none" onclick="goToCashflows()" title="Deposits & withdrawals"></span>
     <span class="user-pill" id="user-pill" style="display:none"></span>
     <button class="signout-btn" id="signout-btn" onclick="doSignOut()" style="display:none">Sign out</button>
   </p>
@@ -443,6 +447,23 @@ textarea{resize:vertical;min-height:56px}
       <button class="save-btn" onclick="saveRSettings()">Save risk settings</button>
     </div>
 
+    <div class="card" id="cash-card">
+      <div class="sec-title">
+        <span>Deposits & withdrawals</span>
+        <span id="cf-net" style="font-size:11px;color:var(--text-secondary);text-transform:none;letter-spacing:0;font-family:var(--mono)"></span>
+      </div>
+      <div class="grid3">
+        <div class="field"><label>Date</label><input type="date" id="cf-date"></div>
+        <div class="field"><label>Type</label>
+          <select id="cf-type"><option value="deposit">Deposit</option><option value="withdraw">Withdraw</option><option value="credit_in">Credit in (broker)</option><option value="credit_out">Credit out (broker)</option></select>
+        </div>
+        <div class="field"><label>Amount ($)</label><input type="number" id="cf-amount" step="0.01" min="0"></div>
+      </div>
+      <div class="field" style="margin-top:10px"><label>Note</label><input type="text" id="cf-note"></div>
+      <button class="save-btn" onclick="addCashflow()">Add</button>
+      <div id="cash-list" style="margin-top:10px"></div>
+    </div>
+
     <div class="card">
       <div class="sec-title">Manage default checklist</div>
       <p style="font-size:12px;color:var(--text-secondary);margin-bottom:10px">Conditions saved here appear by default on new trades.</p>
@@ -538,7 +559,10 @@ let showCosts = false; // toggle for cost breakdown in History/Stats
 let fb = null;
 let fbPaths = null;
 let unsubTrades = null;
-let currentBalance = null; // starting balance + all net P&L (null if no starting balance set)
+let cashflows = [];
+let unsubCash = null;
+let currentBalance = null;
+let currentCredit = 0; // broker credit, tracked apart from balance // starting balance + all net P&L (null if no starting balance set)
 let unsubNotes = null;
 let notes = [];
 let noteTimers = {};
@@ -567,6 +591,9 @@ window.addEventListener('fb-ready', () => {
 function onSignedOut() {
   // Tear down any active subscription
   if (unsubTrades) { try { unsubTrades(); } catch(_){} unsubTrades = null; }
+  if (unsubCash) { try { unsubCash(); } catch(_){} unsubCash = null; }
+  cashflows = [];
+  renderCashflows();
   teardownNotes();
   trades = [];
   currentBalance = null;
@@ -588,7 +615,8 @@ async function onSignedIn(user) {
   fbPaths = {
     tradesCol: fb.collection(fb.db, "users", user.uid, "trades"),
     settingsDoc: fb.doc(fb.db, "users", user.uid, "meta", "settings"),
-    notesCol: fb.collection(fb.db, "users", user.uid, "notes")
+    notesCol: fb.collection(fb.db, "users", user.uid, "notes"),
+    cashCol: fb.collection(fb.db, "users", user.uid, "cashflows")
   };
 
   setupNotes();
@@ -622,6 +650,18 @@ async function onSignedIn(user) {
     }, (err) => {
       console.error(err);
       setSyncStatus('err', 'Sync error — check console');
+    });
+
+    // Live deposits/withdrawals subscription
+    unsubCash = fb.onSnapshot(fbPaths.cashCol, (qs) => {
+      cashflows = [];
+      qs.forEach(d => cashflows.push({ ...d.data(), id: d.id }));
+      recomputeDerived();
+      renderCashflows();
+      refreshVisibleTabs();
+    }, (err) => {
+      console.error(err);
+      document.getElementById('cash-list').innerHTML = '<div style="font-size:12px;color:var(--text-danger)">Sync error — check Firestore rules for cashflows</div>';
     });
   } catch(e) {
     console.error(e);
@@ -841,6 +881,7 @@ function init() {
   const now = new Date();
   calYear = now.getFullYear(); calMonth = now.getMonth();
   document.getElementById('f-date').valueAsDate = now;
+  document.getElementById('cf-date').valueAsDate = now;
   rebuildPairDropdown();
   resetChecklistFromDefault();
   renderPartials();
@@ -1312,38 +1353,138 @@ function chronoTrades() {
   });
 }
 
-// Walk trades chronologically: balance before/after each trade, and Actual RR
-// against the 1R that applied at that moment (compounding in % mode).
+const CF_LABELS = { deposit: 'Deposit', withdraw: 'Withdraw', credit_in: 'Credit in', credit_out: 'Credit out' };
+function isCredit(c) { return c.type === 'credit_in' || c.type === 'credit_out'; }
+
+// Signed effect on balance: deposits add, withdrawals subtract, broker credit = 0
+function cashSigned(c) {
+  if (isCredit(c)) return 0;
+  const a = Math.abs(parseFloat(c.amount) || 0);
+  return c.type === 'withdraw' ? -a : a;
+}
+
+// Signed effect on broker credit (separate from balance, like MT5)
+function creditSigned(c) {
+  if (!isCredit(c)) return 0;
+  const a = Math.abs(parseFloat(c.amount) || 0);
+  return c.type === 'credit_out' ? -a : a;
+}
+
+// Walk trades and cash flows chronologically: balance before/after each trade, and
+// Actual RR against the 1R that applied at that moment (compounding in % mode).
+// A cash flow on a given date counts before that day's trades.
 function recomputeDerived() {
   const start = parseFloat(rSettings.account);
   const pct = parseFloat(rSettings.percent);
   const dollarR = parseFloat(rSettings.dollar);
-  let bal = (start > 0) ? start : null;
-  for (const t of chronoTrades()) {
+  const events = [
+    ...cashflows.map(c => ({ kind: 'c', key: (c.date || '') + 'T00:00', order: 0, created: c.createdAt || 0, c })),
+    ...trades.map(t => ({ kind: 't', key: (t.date || '') + 'T' + (t.time || '99:99'), order: 1, created: t.createdAt || 0, t }))
+  ].sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : (a.order - b.order) || (a.created - b.created)));
+
+  let bal = (start > 0) ? start : (cashflows.some(c => !isCredit(c)) ? 0 : null);
+  let credit = 0;
+  for (const e of events) {
+    if (e.kind === 'c') {
+      if (isCredit(e.c)) { credit += creditSigned(e.c); e.c.creditAfter = credit; }
+      else bal = (bal || 0) + cashSigned(e.c);
+      e.c.balanceAfter = bal;
+      continue;
+    }
+    const t = e.t;
     t.balanceBefore = bal;
     let R = null;
-    if (rSettings.mode === 'percent') { if (bal != null && pct > 0) R = bal * pct / 100; }
+    if (rSettings.mode === 'percent') { if (bal != null && bal > 0 && pct > 0) R = bal * pct / 100; }
     else if (dollarR > 0) R = dollarR;
     if (R && t.pnl != null) t.actualRR = Math.round(t.pnl / R * 100) / 100;
     if (bal != null) bal += (t.pnl || 0);
     t.balanceAfter = bal;
   }
   currentBalance = bal;
+  currentCredit = credit;
   renderBalance();
 }
 
 function renderBalance() {
   const el = document.getElementById('bal-pill');
   if (!el) return;
-  if (currentBalance == null) { el.style.display = 'none'; return; }
+  const hasCredit = Math.abs(currentCredit) > 0.005;
+  if (currentBalance == null && !hasCredit) { el.style.display = 'none'; return; }
   el.style.display = 'inline-block';
-  el.textContent = 'Balance ' + fmtMoney(currentBalance);
+  el.textContent = (currentBalance != null ? 'Balance ' + fmtMoney(currentBalance) : '') +
+    (hasCredit ? (currentBalance != null ? ' · ' : '') + 'Credit ' + fmtMoney(currentCredit) : '');
 }
 
 function refreshVisibleTabs() {
   if (document.getElementById('tab-history').style.display !== 'none') renderHistory();
   if (document.getElementById('tab-calendar').style.display !== 'none') renderCalendar();
   if (document.getElementById('tab-stats').style.display !== 'none') renderStats();
+}
+
+// ===== Deposits & withdrawals =====
+function renderCashflows() {
+  const list = document.getElementById('cash-list');
+  const netEl = document.getElementById('cf-net');
+  if (!list) return;
+  const net = cashflows.reduce((a, c) => a + cashSigned(c), 0);
+  const parts = [];
+  if (cashflows.some(c => !isCredit(c))) parts.push(`Net ${net >= 0 ? '+' : ''}${fmtMoney(net)}`);
+  if (cashflows.some(isCredit)) parts.push(`Credit ${fmtMoney(currentCredit)}`);
+  netEl.textContent = parts.join(' · ');
+  if (!cashflows.length) { list.innerHTML = ''; return; }
+  const sorted = cashflows.slice().sort((a, b) =>
+    (b.date || '').localeCompare(a.date || '') || (b.createdAt || 0) - (a.createdAt || 0));
+  list.innerHTML = sorted.map(c => {
+    const cr = isCredit(c);
+    const v = cr ? creditSigned(c) : cashSigned(c);
+    const dep = v >= 0;
+    const after = cr ? (c.creditAfter != null ? 'Credit after ' + fmtMoney(c.creditAfter) : '')
+                     : (c.balanceAfter != null ? 'Bal after ' + fmtMoney(c.balanceAfter) : '');
+    return `<div class="cf-row">
+      <span class="badge ${cr ? 'bb' : dep ? 'bw' : 'bl'}">${CF_LABELS[c.type] || 'Deposit'}</span>
+      <div class="cf-main">
+        <div>${escapeHtml(c.date || '')}</div>
+        <div class="cf-sub">${after}${c.note ? (after ? ' · ' : '') + escapeHtml(c.note) : ''}</div>
+      </div>
+      <span class="cf-amt" style="color:${dep ? 'var(--text-success)' : 'var(--text-danger)'}">${dep ? '+' : '-'}${fmtMoney(Math.abs(v))}</span>
+      <button class="chk-del" onclick="deleteCashflow('${c.id}')">remove</button>
+    </div>`;
+  }).join('');
+}
+
+async function addCashflow() {
+  if (!fb || !fbPaths) { alert('Not signed in.'); return; }
+  const date = document.getElementById('cf-date').value;
+  const type = document.getElementById('cf-type').value;
+  const amount = parseFloat(document.getElementById('cf-amount').value);
+  const note = document.getElementById('cf-note').value.trim();
+  if (!date) { alert('Pick a date.'); return; }
+  if (!(amount > 0)) { alert('Enter an amount above 0.'); return; }
+  if (type === 'withdraw' && currentBalance != null && amount > currentBalance &&
+      !confirm(`Withdraw ${fmtMoney(amount)} is more than your balance (${fmtMoney(currentBalance)}). Add anyway?`)) return;
+  if (type === 'credit_out' && amount > currentCredit + 0.005 &&
+      !confirm(`Credit out ${fmtMoney(amount)} is more than your credit (${fmtMoney(currentCredit)}). Add anyway?`)) return;
+  try {
+    await fb.setDoc(fb.doc(fbPaths.cashCol, String(Date.now())), { date, type, amount, note, createdAt: Date.now() });
+    document.getElementById('cf-amount').value = '';
+    document.getElementById('cf-note').value = '';
+    setSyncStatus('ok', (CF_LABELS[type] || 'Entry') + ' added');
+  } catch(err) {
+    alert('Save failed: ' + err.message);
+  }
+}
+
+async function deleteCashflow(id) {
+  const c = cashflows.find(x => x.id === id);
+  if (!c) return;
+  if (!confirm(`Remove ${(CF_LABELS[c.type] || 'entry').toLowerCase()} of ${fmtMoney(Math.abs(parseFloat(c.amount) || 0))} on ${c.date}?`)) return;
+  try { await fb.deleteDoc(fb.doc(fbPaths.cashCol, id)); }
+  catch(err) { alert('Delete failed: ' + err.message); }
+}
+
+function goToCashflows() {
+  showTab('settings');
+  document.getElementById('cash-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // 1R for the trade on the Log form. % mode: balance before this trade × risk %.
@@ -1382,7 +1523,7 @@ function updateREffective() {
     const acc = parseFloat(document.getElementById('r-account').value);
     const pct = parseFloat(document.getElementById('r-percent').value);
     if (acc && pct) {
-      const bal = acc + trades.reduce((a, t) => a + (t.pnl || 0), 0);
+      const bal = acc + trades.reduce((a, t) => a + (t.pnl || 0), 0) + cashflows.reduce((a, c) => a + cashSigned(c), 0);
       val = bal * (pct / 100);
     }
   } else {
@@ -1885,7 +2026,8 @@ function renderStats() {
 }
 
 function exportData() {
-  const blob = new Blob([JSON.stringify({ trades, pairs, defaultChecklist }, null, 2)], { type: 'application/json' });
+  const strip = ({ balanceBefore, balanceAfter, creditAfter, ...rest }) => rest;
+  const blob = new Blob([JSON.stringify({ trades: trades.map(strip), cashflows: cashflows.map(strip), pairs, defaultChecklist }, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `trade-journal-${new Date().toISOString().slice(0,10)}.json`;
@@ -1911,6 +2053,12 @@ async function importData(ev) {
       const { id: _, ...rest } = t;
       await fb.setDoc(fb.doc(fbPaths.tradesCol, id), { ...rest, createdAt: rest.createdAt || Date.now() });
       n++;
+    }
+    if (Array.isArray(data.cashflows)) {
+      for (const c of data.cashflows) {
+        const { id: cid, balanceAfter, creditAfter, ...rest } = c;
+        await fb.setDoc(fb.doc(fbPaths.cashCol, cid ? String(cid) : String(Date.now() + n++)), rest);
+      }
     }
     if (Array.isArray(data.pairs)) { pairs = data.pairs; }
     if (Array.isArray(data.defaultChecklist)) { defaultChecklist = data.defaultChecklist; }
@@ -1980,6 +2128,9 @@ window.saveRSettings = saveRSettings;
 window.updateRRPreview = updateRRPreview;
 window.toggleNotes = toggleNotes;
 window.addNote = addNote;
+window.addCashflow = addCashflow;
+window.deleteCashflow = deleteCashflow;
+window.goToCashflows = goToCashflows;
 // Expose images array so inline thumbnail onclicks in the log form can reference it
 Object.defineProperty(window, 'currentImages', { get: () => currentImages });
 
