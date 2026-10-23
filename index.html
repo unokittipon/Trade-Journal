@@ -159,6 +159,15 @@ textarea{resize:vertical;min-height:56px}
 .bi{background:var(--bg-info);color:var(--text-info)}
 .bn{background:var(--bg-secondary);color:var(--text-secondary)}
 .skip-meta{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}
+.notes-toggle{font-size:11px;color:var(--text-info);cursor:pointer;margin-top:5px;display:inline-block;user-select:none}
+.trade-detail{display:none;margin-top:10px;padding-top:10px;border-top:0.5px solid var(--border);font-size:13px}
+.trade-row.open .trade-detail{display:block}
+.td-block{margin-bottom:10px}
+.td-label{font-size:11px;font-weight:500;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
+.td-text{white-space:pre-wrap;word-break:break-word;color:var(--text-primary);line-height:1.5}
+.td-chk{display:flex;flex-direction:column;gap:2px;font-size:12px}
+.td-chk .ok{color:var(--text-success)}
+.td-chk .no{color:var(--text-danger)}
 .cf-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:0.5px solid var(--border);font-size:13px}
 .cf-row .cf-main{flex:1;min-width:0}
 .cf-row .cf-sub{font-size:11px;color:var(--text-secondary);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -658,6 +667,7 @@ const MAX_IMAGES = 4;
 let editingId = null;    // id of trade being edited
 let calYear, calMonth;
 let activeCalPair = 'All', activeHistPair = 'All', activeStatsPair = 'All';
+let openHistRows = new Set(); // trade ids whose notes panel is expanded
 let showCosts = false; // toggle for cost breakdown in History/Stats
 let fb = null;
 let fbPaths = null;
@@ -2371,14 +2381,16 @@ function renderHistory() {
           return `<div style="position:relative"><img src="${safeImg(src)}" class="trade-thumb" data-trade="${escapeHtml(t.id)}" data-idx="${i}">${more}</div>`;
         }).join('')}</div>`
       : '';
-    return `<div class="trade-row">
+    const hasDetail = !!(t.right || t.wrong || t.emotion || (t.checklist && t.checklist.length) || t.entry != null);
+    return `<div class="trade-row${openHistRows.has(t.id)?' open':''}">
       <div class="trade-row-top">
         <div style="flex:1;min-width:0">
           <div style="font-weight:500;font-size:13px;color:var(--text-primary)">${escapeHtml(t.date||'')}${timeStr} · ${escapeHtml(t.pair||'')} · ${escapeHtml(t.dir||'—')}</div>
           <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">${escapeHtml(t.session||'—')} · RR: ${t.rr?'1:'+Number(t.rr):'—'}${t.actualRR?' · Actual '+Number(t.actualRR)+'R':''}${partialsStr}</div>
           <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">Bias: ${escapeHtml(t.bias||'—')}${t.balanceAfter!=null&&t.balanceBefore!=null?` · Bal ${fmtMoney(t.balanceBefore)} → ${fmtMoney(t.balanceAfter)}`:''}</div>
           ${costLine}
-          ${t.wrong?`<div style="font-size:12px;color:var(--text-secondary);font-style:italic;margin-top:2px">${escapeHtml(t.wrong.substring(0,70))}${t.wrong.length>70?'…':''}</div>`:''}
+          ${(!openHistRows.has(t.id) && (t.wrong||t.right))?`<div style="font-size:12px;color:var(--text-secondary);font-style:italic;margin-top:2px">${escapeHtml((t.wrong||t.right).substring(0,70))}${(t.wrong||t.right).length>70?'…':''}</div>`:''}
+          ${hasDetail?`<span class="notes-toggle" onclick="toggleHistRow(${jsArg(t.id)})">${openHistRows.has(t.id)?'▴ Hide notes':'▾ Post-trade notes'}</span>`:''}
         </div>
         ${thumbs}
         <div style="text-align:right;flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:4px">
@@ -2390,6 +2402,13 @@ function renderHistory() {
           ${t.checklist&&t.checklist.length&&!t.checklistFull?'<div style="font-size:10px;color:var(--text-danger)">incomplete</div>':''}
         </div>
       </div>
+      ${hasDetail?`<div class="trade-detail">
+        ${t.right?`<div class="td-block"><div class="td-label">What went right</div><div class="td-text">${escapeHtml(t.right)}</div></div>`:''}
+        ${t.wrong?`<div class="td-block"><div class="td-label">What to improve</div><div class="td-text">${escapeHtml(t.wrong)}</div></div>`:''}
+        ${t.emotion?`<div class="td-block"><div class="td-label">Emotion</div><div class="td-text">${escapeHtml(t.emotion)}</div></div>`:''}
+        ${(t.checklist&&t.checklist.length)?`<div class="td-block"><div class="td-label">Checklist · ${t.checklist.filter(c=>c.checked).length}/${t.checklist.length}</div><div class="td-chk">${t.checklist.map(c=>`<span class="${c.checked?'ok':'no'}">${c.checked?'✓':'✗'} ${escapeHtml(c.text)}</span>`).join('')}</div></div>`:''}
+        ${(t.entry!=null||t.sl!=null||t.tp!=null)?`<div class="td-block"><div class="td-label">Levels</div><div class="td-text" style="font-family:var(--mono);font-size:12px">Entry ${t.entry??'—'} · SL ${t.sl??'—'} · TP ${t.tp??'—'}${t.lots!=null?' · '+t.lots+' lots':''}</div></div>`:''}
+      </div>`:''}
     </div>`;
   }).join('');
 
@@ -2405,6 +2424,11 @@ function renderHistory() {
       openLightboxGallery(imgs, idx);
     };
   });
+}
+
+function toggleHistRow(id) {
+  if (openHistRows.has(id)) openHistRows.delete(id); else openHistRows.add(id);
+  renderHistory();
 }
 
 async function deleteTrade(id) {
@@ -2634,6 +2658,7 @@ window.setStatsPair = setStatsPair;
 window.toggleCosts = toggleCosts;
 window.deleteTrade = deleteTrade;
 window.editTrade = editTrade;
+window.toggleHistRow = toggleHistRow;
 window.cancelEdit = cancelEdit;
 window.changeMonth = changeMonth;
 window.showDayDetail = showDayDetail;
