@@ -414,16 +414,6 @@ textarea{resize:vertical;min-height:56px}
     </div>
 
     <div class="card">
-      <div class="sec-title">
-        <span>Why I didn't take it</span>
-        <span id="s-chk-status" style="font-size:11px;color:var(--text-secondary);text-transform:none;letter-spacing:0"></span>
-      </div>
-      <div class="field" style="margin-bottom:12px"><label>Main reason</label><select id="s-reason"></select></div>
-      <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">Conditions that were there</div>
-      <div class="checklist" id="s-checklist"></div>
-    </div>
-
-    <div class="card">
       <div class="sec-title">If I had taken it</div>
       <div class="grid3">
         <div class="field"><label>Entry</label><input type="number" id="s-entry" step="0.00001" oninput="calcSkipRR()"></div>
@@ -470,12 +460,7 @@ textarea{resize:vertical;min-height:56px}
     </div>
     <button class="save-btn" id="s-save-btn" onclick="saveSkip()">Save setup</button>
 
-    <div class="card" style="margin-top:1.25rem">
-      <div class="sec-title">No-trade summary</div>
-      <div class="metric-row" id="skip-metrics"></div>
-      <div id="skip-reasons" style="margin-top:12px"></div>
-    </div>
-    <div id="skip-list"></div>
+    <div id="skip-list" style="margin-top:1.25rem"></div>
   </div>
 
   <!-- HISTORY -->
@@ -519,6 +504,11 @@ textarea{resize:vertical;min-height:56px}
     <div class="card">
       <div class="sec-title">P&L by pair</div>
       <div id="stats-pairs"></div>
+    </div>
+    <div class="card">
+      <div class="sec-title">No-trade summary</div>
+      <div class="metric-row" id="skip-metrics"></div>
+      <div id="skip-sessions" style="margin-top:12px"></div>
     </div>
   </div>
 
@@ -782,6 +772,7 @@ async function onSignedIn(user) {
       qs.forEach(d => skips.push({ ...normalizeSkip(d.data()), id: d.id }));
       skips.sort((a, b) => ((b.date || '') + (b.time || '')).localeCompare((a.date || '') + (a.time || '')) || (b.createdAt || 0) - (a.createdAt || 0));
       if (document.getElementById('tab-skip').style.display !== 'none') renderSkips();
+      if (document.getElementById('tab-stats').style.display !== 'none') renderSkipSummary();
     }, (err) => {
       console.error(err);
       document.getElementById('skip-list').innerHTML = '<div class="empty" style="color:var(--text-danger)">Sync error — check console</div>';
@@ -1831,9 +1822,6 @@ function setupDropZone(id, handler) {
 }
 
 function initSkipForm() {
-  document.getElementById('s-reason').innerHTML =
-    SKIP_REASONS.map(([r, cat]) => `<option value="${escapeHtml(r)}">${escapeHtml(r)}${cat === 'emotion' ? ' ·  emotion' : ''}</option>`).join('');
-  document.getElementById('s-reason').addEventListener('change', updateSkipVerdict);
   document.getElementById('s-date').valueAsDate = new Date();
   resetSkipChecklist();
   renderSkipImages();
@@ -1846,6 +1834,7 @@ function resetSkipChecklist() {
 
 function renderSkipChecklist() {
   const c = document.getElementById('s-checklist');
+  if (!c) return; // section removed from the form
   c.innerHTML = skipChecklist.length ? skipChecklist.map((item, i) => `
     <label class="chk"><input type="checkbox" ${item.checked ? 'checked' : ''} onchange="toggleSkipCond(${i})"><span>${escapeHtml(item.text)}</span></label>`).join('')
     : '<div style="font-size:12px;color:var(--text-secondary)">No default conditions — add them in Settings.</div>';
@@ -1896,17 +1885,14 @@ function autoSkipR() {
 
 // What the skip says about your process
 function skipVerdict(x) {
-  const cat = reasonCat(x.reason);
+  if (x.outcome === 'win') return ['Missed win', 'bb'];
+  if (x.outcome === 'loss') return ['Good skip', 'bw'];
   if (x.outcome === 'be') return ['Neutral', 'bn'];
-  if (x.outcome !== 'win' && x.outcome !== 'loss') return null;
-  const won = x.outcome === 'win';
-  if (cat === 'rule') return won ? ['Rule cost you', 'bb'] : ['Rule saved you', 'bw'];
-  if (cat === 'emotion') return won ? ['Hesitation cost you', 'bl'] : ['Lucky skip', 'bb'];
-  return won ? ['Missed win', 'bb'] : ['Avoided loss', 'bw'];
+  return null;
 }
 
 function updateSkipVerdict() {
-  const v = skipVerdict({ reason: document.getElementById('s-reason').value, outcome: skipOutcome });
+  const v = skipVerdict({ outcome: skipOutcome });
   document.getElementById('s-verdict').innerHTML = v ? `Verdict: <span class="badge ${v[1]}">${v[0]}</span>` : '';
 }
 
@@ -1948,8 +1934,8 @@ async function saveSkip() {
     session: document.getElementById('s-session').value,
     dir: document.getElementById('s-dir').value,
     bias: document.getElementById('s-bias').value,
-    reason: document.getElementById('s-reason').value,
-    checklist: skipChecklist,
+    reason: existing ? existing.reason : 'Other',
+    checklist: existing ? existing.checklist : [],
     entry: num('s-entry'), sl: num('s-sl'), tp: num('s-tp'),
     rr: skipPlannedRR(),
     outcome: skipOutcome,
@@ -1973,7 +1959,6 @@ async function saveSkip() {
 
 function resetSkipForm() {
   ['s-time','s-session','s-dir','s-bias','s-entry','s-sl','s-tp','s-r','s-saw','s-lesson'].forEach(id => { document.getElementById(id).value = ''; });
-  document.getElementById('s-reason').selectedIndex = 0;
   document.getElementById('s-date').valueAsDate = new Date();
   if (pairs.length) document.getElementById('s-pair').value = pairs[0];
   skipImages = []; renderSkipImages();
@@ -1997,7 +1982,6 @@ function editSkip(id) {
   document.getElementById('s-session').value = x.session || '';
   document.getElementById('s-dir').value = x.dir || '';
   document.getElementById('s-bias').value = x.bias || '';
-  document.getElementById('s-reason').value = x.reason;
   document.getElementById('s-entry').value = x.entry ?? '';
   document.getElementById('s-sl').value = x.sl ?? '';
   document.getElementById('s-tp').value = x.tp ?? '';
@@ -2030,42 +2014,43 @@ async function deleteSkip(id) {
 function fmtR(v) { return (v >= 0 ? '+' : '') + Number(v).toFixed(2) + 'R'; }
 function rColor(v) { return v > 0 ? 'var(--text-success)' : v < 0 ? 'var(--text-danger)' : 'var(--text-warning)'; }
 
-function renderSkips() {
-  // Summary
+function renderSkipSummary() {
+  const box = document.getElementById('skip-metrics');
+  if (!box) return;
   const resolved = skips.filter(x => ['win', 'loss', 'be'].includes(x.outcome));
   const wins = resolved.filter(x => x.outcome === 'win').length;
-  const sumR = arr => arr.reduce((a, x) => a + (x.r || 0), 0);
-  const ruleR = sumR(skips.filter(x => reasonCat(x.reason) === 'rule'));
-  const missedR = sumR(skips.filter(x => reasonCat(x.reason) === 'emotion' && (x.r || 0) > 0));
-  document.getElementById('skip-metrics').innerHTML = `
+  const missedR = skips.reduce((a, x) => a + Math.max(x.r || 0, 0), 0);
+  const avoidedR = skips.reduce((a, x) => a + Math.max(-(x.r || 0), 0), 0);
+  box.innerHTML = `
     <div class="metric"><div class="mval">${skips.length}</div><div class="mlbl">Setups skipped</div></div>
     <div class="metric"><div class="mval">${resolved.length ? Math.round(wins / resolved.length * 100) + '%' : '—'}</div><div class="mlbl">Would-have win rate</div></div>
-    <div class="metric"><div class="mval" style="color:${rColor(-ruleR)}">${fmtR(-ruleR)}</div><div class="mlbl">Saved by rules</div></div>
-    <div class="metric"><div class="mval" style="color:${missedR > 0 ? 'var(--text-danger)' : 'var(--text-primary)'}">${missedR > 0 ? '-' : ''}${missedR.toFixed(2)}R</div><div class="mlbl">Lost to hesitation</div></div>`;
+    <div class="metric"><div class="mval" style="color:${missedR > 0 ? 'var(--text-danger)' : 'var(--text-primary)'}">${missedR.toFixed(2)}R</div><div class="mlbl">Missed (would have won)</div></div>
+    <div class="metric"><div class="mval" style="color:${avoidedR > 0 ? 'var(--text-success)' : 'var(--text-primary)'}">${avoidedR.toFixed(2)}R</div><div class="mlbl">Avoided (would have lost)</div></div>`;
 
-  const byReason = SKIP_REASONS.map(([r]) => {
-    const g = skips.filter(x => x.reason === r);
+  const sessions = ['London open (13:00–15:00)', 'NY open (19:00–22:00)', 'London close (22:00–00:00)', 'Asian (05:00–09:00)'];
+  const rows = sessions.map(sess => {
+    const g = skips.filter(x => x.session === sess);
     if (!g.length) return '';
     const res = g.filter(x => ['win', 'loss', 'be'].includes(x.outcome));
     const w = res.filter(x => x.outcome === 'win').length;
-    const R = sumR(g);
+    const R = g.reduce((a, x) => a + (x.r || 0), 0);
     return `<div class="stat-row">
-      <span style="color:var(--text-primary)">${escapeHtml(r)}</span>
+      <span style="color:var(--text-primary)">${escapeHtml(sess)}</span>
       <span style="color:var(--text-secondary)">${g.length}x · ${res.length ? Math.round(w / res.length * 100) + '% would win' : 'no results'} · <b style="color:${rColor(R)}">${fmtR(R)}</b></span>
     </div>`;
   }).join('');
-  document.getElementById('skip-reasons').innerHTML = byReason
-    ? `<div style="font-size:11px;font-weight:500;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">By reason · would-have R</div>${byReason}`
+  document.getElementById('skip-sessions').innerHTML = rows
+    ? `<div style="font-size:11px;font-weight:500;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">By session · would-have R</div>${rows}`
     : '';
+}
 
+function renderSkips() {
   // List
   const list = document.getElementById('skip-list');
   if (!skips.length) { list.innerHTML = '<div class="empty">No skipped setups logged yet</div>'; return; }
   list.innerHTML = skips.map(x => {
     const outcome = { win: ['Hit TP', 'bw'], loss: ['Hit SL', 'bl'], be: ['B/E', 'bb'], unclear: ['Unclear', 'bi'] }[x.outcome];
     const v = skipVerdict(x);
-    const cat = reasonCat(x.reason);
-    const met = x.checklist.filter(c => c.checked).length;
     const thumbs = x.images.length ? `<div class="trade-thumbs">${x.images.slice(0, 2).map((src, i) =>
       `<img src="${safeImg(src)}" class="trade-thumb" onclick="openSkipGallery(${jsArg(x.id)}, ${i})">`).join('')}</div>` : '';
     const note = x.lesson || x.saw;
@@ -2073,9 +2058,8 @@ function renderSkips() {
       <div class="trade-row-top">
         <div style="flex:1;min-width:0">
           <div style="font-weight:500;font-size:13px">${escapeHtml(x.date)}${x.time ? ' · ' + escapeHtml(x.time) : ''} · ${escapeHtml(x.pair)} · ${escapeHtml(x.dir || '—')}</div>
-          <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">${escapeHtml(x.session || '—')} · RR: ${x.rr ? '1:' + Number(x.rr) : '—'}${x.checklist.length ? ` · ${met}/${x.checklist.length} conditions` : ''}</div>
+          <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">${escapeHtml(x.session || '—')} · RR: ${x.rr ? '1:' + Number(x.rr) : '—'}</div>
           <div class="skip-meta">
-            <span class="badge ${cat === 'emotion' ? 'bl' : cat === 'rule' ? 'bi' : 'bn'}">${escapeHtml(x.reason)}</span>
             ${outcome ? `<span class="badge ${outcome[1]}">${outcome[0]}</span>` : ''}
             ${v ? `<span class="badge ${v[1]}">${v[0]}</span>` : ''}
           </div>
@@ -2571,6 +2555,7 @@ function renderStats() {
       <span style="color:var(--text-secondary)">${pt.length}t · ${Math.round(pw/pt.length*100)}% win · <b style="color:${pp>=0?'var(--text-success)':'var(--text-danger)'}">${pp>=0?'+':''}$${pp.toFixed(2)}</b></span>
     </div>`;
   }).join(''):'<div class="empty">No trades logged yet</div>';
+  renderSkipSummary();
 }
 
 function exportData() {
