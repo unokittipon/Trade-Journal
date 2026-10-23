@@ -159,6 +159,10 @@ textarea{resize:vertical;min-height:56px}
 .bi{background:var(--bg-info);color:var(--text-info)}
 .bn{background:var(--bg-secondary);color:var(--text-secondary)}
 .skip-meta{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}
+.view-switch{display:inline-flex;background:var(--bg-secondary);border:0.5px solid var(--border);border-radius:99px;padding:3px;margin-bottom:12px}
+.view-switch button{border:none;background:transparent;font-family:var(--font);font-size:13px;color:var(--text-secondary);padding:5px 14px;border-radius:99px;cursor:pointer}
+.view-switch button.on{background:var(--bg-primary);color:var(--text-primary);font-weight:500;box-shadow:0 1px 2px rgba(0,0,0,0.08)}
+.view-switch .vs-count{font-family:var(--mono);font-size:11px;opacity:.6;margin-left:4px}
 .notes-toggle{font-size:11px;color:var(--text-info);cursor:pointer;margin-top:5px;display:inline-block;user-select:none}
 .trade-detail{display:none;margin-top:10px;padding-top:10px;border-top:0.5px solid var(--border);font-size:13px}
 .trade-row.open .trade-detail{display:block}
@@ -460,16 +464,20 @@ textarea{resize:vertical;min-height:56px}
     </div>
     <button class="save-btn" id="s-save-btn" onclick="saveSkip()">Save setup</button>
 
-    <div id="skip-list" style="margin-top:1.25rem"></div>
   </div>
 
   <!-- HISTORY -->
   <div id="tab-history" style="display:none">
+    <div class="view-switch" id="hist-view">
+      <button id="hv-trades" class="on" onclick="setHistView('trades')">Trades<span class="vs-count" id="hv-trades-n"></span></button>
+      <button id="hv-skip" onclick="setHistView('skip')">No-trade<span class="vs-count" id="hv-skip-n"></span></button>
+    </div>
     <div class="filter-row">
       <div class="pair-filter" id="hist-filter"></div>
-      <label class="cost-toggle"><input type="checkbox" id="hist-cost-toggle" onchange="toggleCosts(this.checked)"> Show costs</label>
+      <label class="cost-toggle" id="hist-cost-wrap"><input type="checkbox" id="hist-cost-toggle" onchange="toggleCosts(this.checked)"> Show costs</label>
     </div>
     <div id="hist-list"></div>
+    <div id="skip-list" style="display:none"></div>
   </div>
 
   <!-- CALENDAR -->
@@ -657,6 +665,7 @@ const MAX_IMAGES = 4;
 let editingId = null;    // id of trade being edited
 let calYear, calMonth;
 let activeCalPair = 'All', activeHistPair = 'All', activeStatsPair = 'All';
+let histView = 'trades'; // 'trades' | 'skip'
 let openHistRows = new Set(); // trade ids whose notes panel is expanded
 let showCosts = false; // toggle for cost breakdown in History/Stats
 let fb = null;
@@ -771,7 +780,7 @@ async function onSignedIn(user) {
       skips = [];
       qs.forEach(d => skips.push({ ...normalizeSkip(d.data()), id: d.id }));
       skips.sort((a, b) => ((b.date || '') + (b.time || '')).localeCompare((a.date || '') + (a.time || '')) || (b.createdAt || 0) - (a.createdAt || 0));
-      if (document.getElementById('tab-skip').style.display !== 'none') renderSkips();
+      if (document.getElementById('tab-history').style.display !== 'none') renderHistory();
       if (document.getElementById('tab-stats').style.display !== 'none') renderSkipSummary();
     }, (err) => {
       console.error(err);
@@ -1950,7 +1959,7 @@ async function saveSkip() {
     const wasEditing = !!skipEditingId;
     resetSkipForm();
     setSyncStatus('ok', wasEditing ? 'Setup updated' : 'Setup saved');
-    document.getElementById('skip-list').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (wasEditing) { histView = 'skip'; showTab('history'); }
   } catch(err) {
     console.error(err);
     alert(String(err.message || '').includes('longer than') ? 'Save failed: images too large. Try fewer or smaller images.' : 'Failed to save: ' + err.message);
@@ -2047,8 +2056,9 @@ function renderSkipSummary() {
 function renderSkips() {
   // List
   const list = document.getElementById('skip-list');
-  if (!skips.length) { list.innerHTML = '<div class="empty">No skipped setups logged yet</div>'; return; }
-  list.innerHTML = skips.map(x => {
+  const shown = activeHistPair === 'All' ? skips : skips.filter(x => x.pair === activeHistPair);
+  if (!shown.length) { list.innerHTML = '<div class="empty">No skipped setups logged yet</div>'; return; }
+  list.innerHTML = shown.map(x => {
     const outcome = { win: ['Hit TP', 'bw'], loss: ['Hit SL', 'bl'], be: ['B/E', 'bb'], unclear: ['Unclear', 'bi'] }[x.outcome];
     const v = skipVerdict(x);
     const thumbs = x.images.length ? `<div class="trade-thumbs">${x.images.slice(0, 2).map((src, i) =>
@@ -2088,7 +2098,6 @@ function showTab(t) {
     document.getElementById('tab-'+x).style.display = x===t ? 'block' : 'none';
     document.querySelectorAll('.tab')[i].classList.toggle('active', x===t);
   });
-  if(t==='skip') renderSkips();
   if(t==='history') renderHistory();
   if(t==='calendar') renderCalendar();
   if(t==='stats') renderStats();
@@ -2310,7 +2319,8 @@ function cancelEdit() {
 }
 
 function getUsedPairs() {
-  return [...new Set(trades.map(t=>t.pair))].filter(Boolean);
+  const src = (histView === 'skip' && document.getElementById('tab-history').style.display !== 'none') ? skips : trades;
+  return [...new Set(src.map(t=>t.pair))].filter(Boolean);
 }
 
 function buildFilter(cid, active, cb) {
@@ -2333,8 +2343,23 @@ function toggleCosts(on) {
   renderStats();
 }
 
+function setHistView(v) {
+  histView = v;
+  activeHistPair = 'All';
+  renderHistory();
+}
+
 function renderHistory() {
+  document.getElementById('hv-trades').classList.toggle('on', histView === 'trades');
+  document.getElementById('hv-skip').classList.toggle('on', histView === 'skip');
+  document.getElementById('hv-trades-n').textContent = trades.length || '';
+  document.getElementById('hv-skip-n').textContent = skips.length || '';
+  const skipView = histView === 'skip';
+  document.getElementById('hist-list').style.display = skipView ? 'none' : 'block';
+  document.getElementById('skip-list').style.display = skipView ? 'block' : 'none';
+  document.getElementById('hist-cost-wrap').style.display = skipView ? 'none' : '';
   buildFilter('hist-filter',activeHistPair,'setHistPair');
+  if (skipView) { renderSkips(); return; }
   const f=activeHistPair==='All'?trades:trades.filter(t=>t.pair===activeHistPair);
   const c=document.getElementById('hist-list');
   if(!f.length){c.innerHTML='<div class="empty">No trades yet</div>';return;}
@@ -2644,6 +2669,7 @@ window.toggleCosts = toggleCosts;
 window.deleteTrade = deleteTrade;
 window.editTrade = editTrade;
 window.toggleHistRow = toggleHistRow;
+window.setHistView = setHistView;
 window.cancelEdit = cancelEdit;
 window.changeMonth = changeMonth;
 window.showDayDetail = showDayDetail;
