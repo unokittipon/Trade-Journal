@@ -2067,8 +2067,8 @@ function renderSkipSummary() {
   box.innerHTML = `
     <div class="metric"><div class="mval">${skips.length}</div><div class="mlbl">Setups skipped</div></div>
     <div class="metric"><div class="mval">${resolved.length ? Math.round(wins / resolved.length * 100) + '%' : '—'}</div><div class="mlbl">Would-have win rate</div></div>
-    <div class="metric"><div class="mval" style="color:${missedR > 0 ? 'var(--text-danger)' : 'var(--text-primary)'}">${missedR.toFixed(2)}R</div><div class="mlbl">Missed (would have won)</div></div>
-    <div class="metric"><div class="mval" style="color:${avoidedR > 0 ? 'var(--text-success)' : 'var(--text-primary)'}">${avoidedR.toFixed(2)}R</div><div class="mlbl">Avoided (would have lost)</div></div>`;
+    <div class="metric"><div class="mval">${missedR.toFixed(2)}R</div><div class="mlbl">Missed (would have won)</div></div>
+    <div class="metric"><div class="mval">${avoidedR.toFixed(2)}R</div><div class="mlbl">Avoided (would have lost)</div></div>`;
 
   const sessions = ['London open (13:00–15:00)', 'NY open (19:00–22:00)', 'London close (22:00–00:00)', 'Asian (05:00–09:00)'];
   const rows = sessions.map(sess => {
@@ -2573,6 +2573,28 @@ function niceTicks(min, max, count) {
   return ticks;
 }
 
+// Monotone cubic (Fritsch–Carlson): a smooth curve that still passes through every
+// point and never bulges above a real peak or below a real low.
+function smoothPath(P) {
+  const n = P.length;
+  if (n < 3) return P.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+  const d = [], m = new Array(n);
+  for (let i = 0; i < n - 1; i++) d.push((P[i + 1][1] - P[i][1]) / ((P[i + 1][0] - P[i][0]) || 1));
+  m[0] = d[0]; m[n - 1] = d[n - 2];
+  for (let i = 1; i < n - 1; i++) m[i] = (d[i - 1] * d[i] <= 0) ? 0 : (d[i - 1] + d[i]) / 2;
+  for (let i = 0; i < n - 1; i++) {
+    if (d[i] === 0) { m[i] = 0; m[i + 1] = 0; continue; }
+    const a = m[i] / d[i], b = m[i + 1] / d[i], h = a * a + b * b;
+    if (h > 9) { const t = 3 / Math.sqrt(h); m[i] = t * a * d[i]; m[i + 1] = t * b * d[i]; }
+  }
+  let out = 'M' + P[0][0].toFixed(1) + ' ' + P[0][1].toFixed(1);
+  for (let i = 0; i < n - 1; i++) {
+    const dx = (P[i + 1][0] - P[i][0]) / 3;
+    out += ` C${(P[i][0] + dx).toFixed(1)} ${(P[i][1] + m[i] * dx).toFixed(1)} ${(P[i + 1][0] - dx).toFixed(1)} ${(P[i + 1][1] - m[i + 1] * dx).toFixed(1)} ${P[i + 1][0].toFixed(1)} ${P[i + 1][1].toFixed(1)}`;
+  }
+  return out;
+}
+
 function fmtAxisMoney(v) {
   const a = Math.abs(v), sign = v < 0 ? '-' : '';
   if (a >= 1e6) return sign + '$' + (a / 1e6).toFixed(a >= 1e7 ? 0 : 1) + 'M';
@@ -2625,7 +2647,7 @@ function renderBalanceChart() {
   // Date labels: first, middle, last (skip repeats)
   const xIdx = [...new Set([0, Math.floor((n - 1) / 2), n - 1])];
   const shortDate = d => d ? d.slice(5).replace('-', '/') : '';
-  const path = pts.map((p, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(p.v).toFixed(1)).join(' ');
+  const path = smoothPath(pts.map((p, i) => [x(i), y(p.v)]));
   const baseV = pts[0].v;
 
   box.innerHTML = `
@@ -2715,13 +2737,12 @@ function renderStats() {
     <div class="metric"><div class="mval" style="color:${totalSwap>=0?'var(--text-success)':'var(--text-danger)'}">${totalSwap>=0?'+':''}$${totalSwap.toFixed(2)}</div><div class="mlbl">Swap</div></div>
   ` : '';
   document.getElementById('stats-metrics').innerHTML=`
+    ${currentBalance!=null?`<div class="metric"><div class="mval">${fmtMoney(currentBalance)}</div><div class="mlbl">Balance</div></div>`:''}
+    <div class="metric"><div class="mval" style="color:${totalPnl>=0?'var(--text-success)':'var(--text-danger)'}">${totalPnl>=0?'+':''}$${totalPnl.toFixed(2)}</div><div class="mlbl">Net P&L</div></div>
     <div class="metric"><div class="mval">${total}</div><div class="mlbl">Total trades</div></div>
     <div class="metric"><div class="mval">${total?Math.round(wins/total*100):0}%</div><div class="mlbl">Win rate</div></div>
-    <div class="metric"><div class="mval" style="color:${totalPnl>=0?'var(--text-success)':'var(--text-danger)'}">${totalPnl>=0?'+':''}$${totalPnl.toFixed(2)}</div><div class="mlbl">Net P&L</div></div>
-    <div class="metric"><div class="mval" style="color:${pfColor}">${pfText}</div><div class="mlbl">Profit factor</div></div>
-    ${currentBalance!=null?`<div class="metric"><div class="mval">${fmtMoney(currentBalance)}</div><div class="mlbl">Balance</div></div>`:''}
     <div class="metric"><div class="mval">${avgRR}</div><div class="mlbl">Avg RR</div></div>
-    <div class="metric"><div class="mval">${total?Math.round(fullChk/total*100):0}%</div><div class="mlbl">Full checklist</div></div>
+    <div class="metric"><div class="mval" style="color:${pfColor}">${pfText}</div><div class="mlbl">Profit factor</div></div>
     ${costMetrics}
   `;
   // Match new session labels (with time strings)
@@ -2733,7 +2754,7 @@ function renderStats() {
     const sp=st.reduce((a,t)=>a+(t.pnl||0),0);
     return `<div class="stat-row">
       <span style="color:var(--text-primary)">${s}</span>
-      <span style="color:var(--text-secondary)">${st.length}t · <b style="color:var(--text-primary)">${Math.round(sw/st.length*100)}% win</b> · <b style="color:${sp>=0?'var(--text-success)':'var(--text-danger)'}">${sp>=0?'+':''}$${sp.toFixed(2)}</b></span>
+      <span style="color:var(--text-secondary)">${st.length}t · <b style="color:var(--text-primary)">${Math.round(sw/st.length*100)}% win</b> · <b style="color:${sp>=0?'var(--text-success)':'var(--text-danger)'}">${sp>=0?'+':''}${fmtMoney(sp)}</b></span>
     </div>`;
   }).join('') || '<div class="empty">No session data yet</div>';
   const usedPairs=[...new Set(f.map(t=>t.pair))].filter(Boolean);
@@ -2743,7 +2764,7 @@ function renderStats() {
     const pp=pt.reduce((a,t)=>a+(t.pnl||0),0);
     return `<div class="stat-row">
       <span style="font-weight:500;color:var(--text-primary)">${escapeHtml(pair)}</span>
-      <span style="color:var(--text-secondary)">${pt.length}t · ${Math.round(pw/pt.length*100)}% win · <b style="color:${pp>=0?'var(--text-success)':'var(--text-danger)'}">${pp>=0?'+':''}$${pp.toFixed(2)}</b></span>
+      <span style="color:var(--text-secondary)">${pt.length}t · ${Math.round(pw/pt.length*100)}% win · <b style="color:${pp>=0?'var(--text-success)':'var(--text-danger)'}">${pp>=0?'+':''}${fmtMoney(pp)}</b></span>
     </div>`;
   }).join(''):'<div class="empty">No trades logged yet</div>';
   renderBalanceChart();
