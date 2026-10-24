@@ -3,6 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Only Firebase may be contacted; blocks a stolen-session script from sending data anywhere else -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://*.googleapis.com; frame-src https://trade-journal-96a36.firebaseapp.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<script>/* Refuse to run inside another site's frame (clickjacking) */ if (window.top !== window.self) { try { window.top.location = window.self.location.href; } catch (_) { document.documentElement.style.display = 'none'; } }</script>
 <title>Trade Journal</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -24,7 +28,6 @@
     --border:rgba(255,255,255,0.1);--border-md:rgba(255,255,255,0.2);
   }
 }
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&family=DM+Mono:wght@400;500&display=swap');
 body{font-family:var(--font);background:var(--bg-tertiary);color:var(--text-primary);min-height:100vh;padding:2rem 1rem}
 .container{max-width:700px;margin:0 auto}
 h1{font-size:22px;font-weight:500;color:var(--text-primary);margin-bottom:3px}
@@ -106,6 +109,9 @@ textarea{resize:vertical;min-height:56px}
 .pair-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;font-size:12px;background:var(--bg-secondary);border:0.5px solid var(--border);border-radius:99px;color:var(--text-primary)}
 .pair-chip .x{cursor:pointer;color:var(--text-secondary);font-size:14px;line-height:1}
 .pair-chip .x:hover{color:var(--text-danger)}
+.pair-chip .pn{cursor:text;border-bottom:1px dashed transparent}
+.pair-chip .pn:hover{border-bottom-color:var(--text-secondary)}
+.pair-chip input.pn-edit{width:84px;padding:1px 6px;font-size:12px;font-family:var(--mono);text-transform:uppercase;border-radius:6px;background:var(--bg-primary)}
 .danger-btn{width:100%;padding:9px;font-size:13px;font-weight:500;background:transparent;border:0.5px solid var(--text-danger);border-radius:var(--radius-md);color:var(--text-danger);cursor:pointer;margin-top:8px;font-family:var(--font)}
 .danger-btn:hover{background:var(--bg-danger)}
 /* Image upload */
@@ -156,8 +162,10 @@ textarea{resize:vertical;min-height:56px}
 .title-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:3px}
 .title-row h1{margin-bottom:0}
 .sync{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary)}
-.app-footer{display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-top:2rem;padding-top:1rem;border-top:0.5px solid var(--border)}
-.app-footer .signout-btn{margin-left:0}
+.app-footer{position:fixed;right:16px;bottom:16px;z-index:900;display:flex;align-items:center;gap:8px;background:var(--bg-primary);border:0.5px solid var(--border-md);border-radius:99px;padding:4px 4px 4px 12px;box-shadow:0 2px 8px rgba(0,0,0,0.1)}
+.app-footer .signout-btn{margin-left:0;border-radius:99px}
+.container{padding-bottom:64px}
+@media(max-width:500px){.app-footer{right:10px;bottom:10px}}
 .quote{font-size:12px;font-style:italic;color:var(--text-secondary);margin:2px 0 1.25rem;line-height:1.5}
 .quote span{font-style:normal;opacity:.7}
 .sbtn.u{background:var(--bg-info);color:var(--text-info);border-color:var(--text-info)}
@@ -194,7 +202,6 @@ textarea{resize:vertical;min-height:56px}
 .cf-row .cf-main{flex:1;min-width:0}
 .cf-row .cf-sub{font-size:11px;color:var(--text-secondary);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cf-row .cf-amt{font-family:var(--mono);font-weight:500;white-space:nowrap}
-.bal-pill{cursor:pointer;font-size:12px;font-family:var(--mono);color:var(--text-primary);background:var(--bg-primary);border:0.5px solid var(--border);border-radius:99px;padding:2px 10px}
 /* Sticky notes (post-its) */
 .notes{position:fixed;top:16px;right:16px;width:250px;z-index:900;display:flex;flex-direction:column;gap:8px;max-height:calc(100vh - 32px)}
 .notes-bar{display:flex;align-items:center;gap:6px;align-self:flex-end;background:var(--bg-primary);border:0.5px solid var(--border-md);border-radius:99px;padding:4px 5px 4px 12px;font-size:12px;font-weight:500;color:var(--text-primary);box-shadow:0 2px 8px rgba(0,0,0,0.1)}
@@ -252,12 +259,12 @@ textarea{resize:vertical;min-height:56px}
   <p class="quote">"A genius is the man who can do the average thing when everyone around him is losing his mind." <span>— Napoleon</span></p>
 
   <div class="tabs">
-    <div class="tab active" onclick="showTab('log')">Log trade</div>
-    <div class="tab" onclick="showTab('skip')">No-trade</div>
-    <div class="tab" onclick="showTab('history')">History</div>
-    <div class="tab" onclick="showTab('calendar')">Calendar</div>
-    <div class="tab" onclick="showTab('stats')">Stats</div>
-    <div class="tab" onclick="showTab('settings')">Settings</div>
+    <div class="tab" data-tab="stats" onclick="showTab('stats')">Stats</div>
+    <div class="tab active" data-tab="log" onclick="showTab('log')">Log trade</div>
+    <div class="tab" data-tab="skip" onclick="showTab('skip')">No-trade</div>
+    <div class="tab" data-tab="calendar" onclick="showTab('calendar')">Calendar</div>
+    <div class="tab" data-tab="history" onclick="showTab('history')">History</div>
+    <div class="tab" data-tab="settings" onclick="showTab('settings')">Settings</div>
   </div>
 
   <!-- LOG -->
@@ -615,7 +622,7 @@ textarea{resize:vertical;min-height:56px}
     </div>
   </div>
 
-  <div class="app-footer">
+  <div class="app-footer" id="app-footer" style="display:none">
     <span class="user-pill" id="user-pill" style="display:none"></span>
     <button class="signout-btn" id="signout-btn" onclick="doSignOut()" style="display:none">Sign out</button>
   </div>
@@ -641,7 +648,7 @@ textarea{resize:vertical;min-height:56px}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
-import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, getDoc, getDocs }
+import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, getDoc, getDocs, writeBatch }
   from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, setPersistence, browserLocalPersistence }
   from "https://www.gstatic.com/firebasejs/12.12.1/firebase-auth.js";
@@ -663,7 +670,7 @@ setPersistence(auth, browserLocalPersistence).catch(console.error);
 
 // Expose Firestore + helpers; the trades collection path is built once we know the UID.
 window._fb = {
-  db, doc, collection, setDoc, deleteDoc, onSnapshot, getDoc, getDocs,
+  db, doc, collection, setDoc, deleteDoc, onSnapshot, getDoc, getDocs, writeBatch,
   auth, onAuthStateChanged, signInWithEmailAndPassword, signOut
 };
 window.dispatchEvent(new Event("fb-ready"));
@@ -684,7 +691,7 @@ let pairs = [...DEFAULT_PAIRS];
 let defaultChecklist = [...DEFAULT_CHECKLIST];
 let rSettings = { mode: 'dollar', dollar: null, account: null, percent: null };
 let currentChecklist = [];
-let partials = []; // {pct, rr}
+let partials = []; // [{lots, gross, commission, swap}]
 let selOutcome = '';
 let currentImages = []; // array of base64 strings
 const MAX_IMAGES = 4;
@@ -701,7 +708,6 @@ let cashflows = [];
 let skips = [];
 let unsubSkips = null;
 let skipImages = [];
-let skipChecklist = [];
 let skipOutcome = '';
 let skipEditingId = null;
 let skipRManual = false;
@@ -750,11 +756,11 @@ function onSignedOut() {
   teardownNotes();
   trades = [];
   currentBalance = null;
-  renderBalance();
   fbPaths = null;
   document.getElementById('login-overlay').style.display = 'flex';
   document.getElementById('user-pill').style.display = 'none';
   document.getElementById('signout-btn').style.display = 'none';
+  document.getElementById('app-footer').style.display = 'none';
   setSyncStatus('', 'Signed out');
 }
 
@@ -763,6 +769,7 @@ async function onSignedIn(user) {
   document.getElementById('user-pill').style.display = 'inline-block';
   document.getElementById('user-pill').textContent = user.email || user.uid.slice(0,6);
   document.getElementById('signout-btn').style.display = 'inline-block';
+  document.getElementById('app-footer').style.display = 'flex';
 
   // Build per-UID paths
   fbPaths = {
@@ -781,15 +788,22 @@ async function onSignedIn(user) {
     const snap = await fb.getDoc(fbPaths.settingsDoc);
     if (snap.exists()) {
       const data = snap.data();
-      if (Array.isArray(data.pairs) && data.pairs.length) pairs = data.pairs;
-      if (Array.isArray(data.checklist) && data.checklist.length) defaultChecklist = data.checklist;
-      if (data.rSettings) rSettings = { ...rSettings, ...data.rSettings };
+      const cleanPairs = Array.isArray(data.pairs) ? data.pairs.map(p => str(p, 20).toUpperCase()).filter(Boolean).slice(0, 50) : [];
+      const cleanChk = Array.isArray(data.checklist) ? data.checklist.map(t => str(t, 300)).filter(Boolean).slice(0, 50) : [];
+      if (cleanPairs.length) pairs = cleanPairs;
+      if (cleanChk.length) defaultChecklist = cleanChk;
+      if (data.rSettings && typeof data.rSettings === 'object') {
+        const r = data.rSettings;
+        rSettings = {
+          mode: r.mode === 'percent' ? 'percent' : 'dollar',
+          dollar: numOrNull(r.dollar), account: numOrNull(r.account), percent: numOrNull(r.percent)
+        };
+      }
     } else {
       await saveSettings();
     }
     rebuildPairDropdown();
     resetChecklistFromDefault();
-    if (!skipEditingId) resetSkipChecklist();
     renderSettings();
 
     // Live trades subscription
@@ -851,7 +865,7 @@ function setupNotes() {
   if (unsubNotes) { try { unsubNotes(); } catch(_){} }
   unsubNotes = fb.onSnapshot(fbPaths.notesCol, (qs) => {
     notes = [];
-    qs.forEach(d => notes.push({ ...d.data(), id: d.id }));
+    qs.forEach(d => { const n = d.data() || {}; notes.push({ id: d.id, title: str(n.title, 200), text: str(n.text, 20000), createdAt: numOrNull(n.createdAt) || 0 }); });
     notes.sort((a,b) => (a.createdAt||0) - (b.createdAt||0));
     renderNotes();
   }, (err) => {
@@ -902,7 +916,7 @@ function renderNotes() {
   }
 
   if (pendingNoteFocus) {
-    const node = list.querySelector(`.note[data-id="${pendingNoteFocus}"]`);
+    const node = list.querySelector(`.note[data-id="${CSS.escape(pendingNoteFocus)}"]`);
     if (node) { node.querySelector('.note-title').focus(); pendingNoteFocus = null; }
   }
 }
@@ -929,7 +943,7 @@ function createNoteEl(id) {
 }
 
 function noteNode(id) {
-  return document.querySelector(`#notes-list .note[data-id="${id}"]`);
+  return document.querySelector(`#notes-list .note[data-id="${CSS.escape(id)}"]`);
 }
 
 function setNoteStatus(id, t) {
@@ -1039,6 +1053,23 @@ document.addEventListener('keydown', e => {
   }
 });
 
+// Write many docs in as few requests as possible.
+// ops: [{ ref, data }] — data null means delete. Firestore allows 500 writes / ~10MB per batch.
+async function commitInChunks(ops) {
+  const MAX_OPS = 450, MAX_BYTES = 8_000_000;
+  let batch = fb.writeBatch(fb.db), n = 0, bytes = 0;
+  for (const { ref, data } of ops) {
+    const size = data ? JSON.stringify(data).length : 64;
+    if (n && (n >= MAX_OPS || bytes + size > MAX_BYTES)) {
+      await batch.commit();
+      batch = fb.writeBatch(fb.db); n = 0; bytes = 0;
+    }
+    if (data) batch.set(ref, data); else batch.delete(ref);
+    n++; bytes += size;
+  }
+  if (n) await batch.commit();
+}
+
 async function saveSettings() {
   if (!fb || !fbPaths) return;
   await fb.setDoc(fbPaths.settingsDoc, { pairs, checklist: defaultChecklist, rSettings });
@@ -1053,7 +1084,7 @@ function init() {
   resetChecklistFromDefault();
   renderPartials();
   renderImages();
-  setupImageDnD();
+  setupDropZone('img-drop', handleImages);
   setupDropZone('s-img-drop', handleSkipImages);
   initSkipForm();
   setupGlobalDnD();
@@ -1157,7 +1188,6 @@ const SKIP_REASONS = [
   ['Missed it (not at screen)', 'emotion'],
   ['Other', 'other']
 ];
-function reasonCat(r) { const f = SKIP_REASONS.find(x => x[0] === r); return f ? f[1] : 'other'; }
 
 function normalizeSkip(x) {
   x = (x && typeof x === 'object') ? x : {};
@@ -1183,7 +1213,6 @@ function normalizeSkip(x) {
     images
   };
 }
-
 function outcomeBadge(o) {
   if (o === 'win') return '<span class="badge bw">win</span>';
   if (o === 'loss') return '<span class="badge bl">loss</span>';
@@ -1301,9 +1330,6 @@ function partialsSum(field) {
   }
   return any ? total : null;
 }
-
-// Backwards-compat alias used elsewhere
-function partialsTotalPnl() { return partialsSum('gross'); }
 
 // Compute net P&L from current top fields: gross - commission + swap
 function computeNet() {
@@ -1433,26 +1459,22 @@ function compressImage(file) {
   });
 }
 
-async function handleImages(fileList) {
+// Shared by the trade and no-trade forms: compress and append up to MAX_IMAGES
+async function addImageFiles(fileList, target, render, what) {
   if (!fileList || !fileList.length) return;
-  const remaining = MAX_IMAGES - currentImages.length;
-  if (remaining <= 0) { alert(`Max ${MAX_IMAGES} images per trade.`); return; }
-  const files = Array.from(fileList).filter(f => f.type.startsWith('image/')).slice(0, remaining);
-  if (!files.length) { alert('Please pick image files.'); return; }
-  if (fileList.length > remaining) {
-    // Only show a heads-up; we still add what we can
-    setTimeout(() => alert(`Only added ${files.length} — max ${MAX_IMAGES} per trade.`), 50);
-  }
+  const remaining = MAX_IMAGES - target.length;
+  if (remaining <= 0) { alert(`Max ${MAX_IMAGES} images per ${what}.`); return; }
+  const all = Array.from(fileList).filter(f => f.type.startsWith('image/'));
+  if (!all.length) { alert('Please pick image files.'); return; }
+  const files = all.slice(0, remaining);
+  if (all.length > remaining) setTimeout(() => alert(`Only added ${files.length} — max ${MAX_IMAGES} per ${what}.`), 50);
   for (const f of files) {
-    try {
-      const dataUrl = await compressImage(f);
-      currentImages.push(dataUrl);
-    } catch(err) {
-      console.error('Image error', err);
-    }
+    try { target.push(await compressImage(f)); } catch(err) { console.error('Image error', err); }
   }
-  renderImages();
+  render();
 }
+
+function handleImages(fileList) { return addImageFiles(fileList, currentImages, renderImages, 'trade'); }
 
 function renderImages() {
   const grid = document.getElementById('img-grid');
@@ -1473,23 +1495,6 @@ function removeImage(i) {
 }
 
 // Drag & drop on the drop zone
-function setupImageDnD() {
-  const dz = document.getElementById('img-drop');
-  if (!dz) return;
-  ['dragenter','dragover'].forEach(ev => dz.addEventListener(ev, e => {
-    e.preventDefault(); e.stopPropagation();
-    dz.classList.add('dragover');
-  }));
-  ['dragleave','drop'].forEach(ev => dz.addEventListener(ev, e => {
-    e.preventDefault(); e.stopPropagation();
-    dz.classList.remove('dragover');
-  }));
-  dz.addEventListener('drop', e => {
-    const files = e.dataTransfer && e.dataTransfer.files;
-    if (files && files.length) handleImages(files);
-  });
-}
-
 // Also catch drops anywhere on the page (in case user misses the small zone)
 function setupGlobalDnD() {
   ['dragover','drop'].forEach(ev => window.addEventListener(ev, e => {
@@ -1570,7 +1575,7 @@ window.addEventListener('keydown', e => {
 function renderSettings() {
   const pm = document.getElementById('pair-manage');
   pm.innerHTML = pairs.map((p, i) => `
-    <span class="pair-chip">${escapeHtml(p)} <span class="x" onclick="removePair(${i})">×</span></span>
+    <span class="pair-chip"><span class="pn" title="Click to rename" onclick="startRenamePair(${i}, this)">${escapeHtml(p)}</span> <span class="x" title="Remove" onclick="removePair(${i})">×</span></span>
   `).join('') || '<span style="font-size:12px;color:var(--text-secondary)">No pairs yet. Add one below.</span>';
 
   const sc = document.getElementById('settings-checklist');
@@ -1594,6 +1599,65 @@ async function addPair() {
   rebuildPairDropdown();
   renderSettings();
   await saveSettings();
+}
+
+// Click a pair name in Settings to rename it in place
+function startRenamePair(i, el) {
+  const old = pairs[i];
+  const input = document.createElement('input');
+  input.className = 'pn-edit';
+  input.value = old;
+  input.maxLength = 20;
+  el.replaceWith(input);
+  input.focus(); input.select();
+  let done = false;
+  const finish = save => {
+    if (done) return; done = true;
+    if (save) renamePair(i, input.value); else renderSettings();
+  };
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+    if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+  });
+  input.addEventListener('blur', () => finish(true));
+}
+
+async function renamePair(i, raw) {
+  const old = pairs[i];
+  const name = String(raw || '').trim().toUpperCase().replace(/\s+/g, '').slice(0, 20);
+  if (!name || name === old) { renderSettings(); return; }
+  if (pairs.includes(name)) { alert(`${name} is already in your list.`); renderSettings(); return; }
+
+  pairs[i] = name;
+  rebuildPairDropdown();
+  renderSettings();
+  try { await saveSettings(); } catch(err) { alert('Save failed: ' + err.message); return; }
+
+  // Offer to move existing records over so stats and filters stay together
+  const tr = trades.filter(t => t.pair === old);
+  const sk = skips.filter(x => x.pair === old);
+  if (!tr.length && !sk.length) { setSyncStatus('ok', `Renamed to ${name}`); return; }
+  const parts = [];
+  if (tr.length) parts.push(`${tr.length} trade${tr.length === 1 ? '' : 's'}`);
+  if (sk.length) parts.push(`${sk.length} no-trade setup${sk.length === 1 ? '' : 's'}`);
+  if (!confirm(`Also change ${parts.join(' and ')} from ${old} to ${name}?\n\nCancel keeps old records as ${old}.`)) {
+    setSyncStatus('ok', `Renamed to ${name}`);
+    return;
+  }
+  try {
+    setSyncStatus('', `Updating ${parts.join(' and ')}…`);
+    await commitInChunks([
+      ...tr.map(t => ({ ref: fb.doc(fbPaths.tradesCol, t.id), data: { ...normalizeTrade(t), pair: name } })),
+      ...sk.map(x => ({ ref: fb.doc(fbPaths.skipsCol, x.id), data: { ...normalizeSkip(x), pair: name } }))
+    ]);
+    if (activeHistPair === old) activeHistPair = name;
+    if (activeCalPair === old) activeCalPair = name;
+    if (activeStatsPair === old) activeStatsPair = name;
+    setSyncStatus('ok', `Renamed to ${name}`);
+  } catch(err) {
+    console.error(err);
+    alert('Some records could not be updated: ' + err.message);
+  }
 }
 
 async function removePair(i) {
@@ -1699,17 +1763,6 @@ function recomputeDerived() {
   }
   currentBalance = bal;
   currentCredit = credit;
-  renderBalance();
-}
-
-function renderBalance() {
-  const el = document.getElementById('bal-pill');
-  if (!el) return;
-  const hasCredit = Math.abs(currentCredit) > 0.005;
-  if (currentBalance == null && !hasCredit) { el.style.display = 'none'; return; }
-  el.style.display = 'inline-block';
-  el.textContent = (currentBalance != null ? 'Balance ' + fmtMoney(currentBalance) : '') +
-    (hasCredit ? (currentBalance != null ? ' · ' : '') + 'Credit ' + fmtMoney(currentCredit) : '');
 }
 
 function refreshVisibleTabs() {
@@ -1777,11 +1830,6 @@ async function deleteCashflow(id) {
   if (!confirm(`Remove ${(CF_LABELS[c.type] || 'entry').toLowerCase()} of ${fmtMoney(Math.abs(parseFloat(c.amount) || 0))} on ${c.date}?`)) return;
   try { await fb.deleteDoc(fb.doc(fbPaths.cashCol, id)); }
   catch(err) { alert('Delete failed: ' + err.message); }
-}
-
-function goToCashflows() {
-  showTab('settings');
-  document.getElementById('cash-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // 1R for the trade on the Log form. % mode: balance before this trade × risk %.
@@ -1876,26 +1924,8 @@ function setupDropZone(id, handler) {
 
 function initSkipForm() {
   document.getElementById('s-date').valueAsDate = new Date();
-  resetSkipChecklist();
   renderSkipImages();
 }
-
-function resetSkipChecklist() {
-  skipChecklist = defaultChecklist.map(text => ({ text, checked: false }));
-  renderSkipChecklist();
-}
-
-function renderSkipChecklist() {
-  const c = document.getElementById('s-checklist');
-  if (!c) return; // section removed from the form
-  c.innerHTML = skipChecklist.length ? skipChecklist.map((item, i) => `
-    <label class="chk"><input type="checkbox" ${item.checked ? 'checked' : ''} onchange="toggleSkipCond(${i})"><span>${escapeHtml(item.text)}</span></label>`).join('')
-    : '<div style="font-size:12px;color:var(--text-secondary)">No default conditions — add them in Settings.</div>';
-  const done = skipChecklist.filter(x => x.checked).length;
-  document.getElementById('s-chk-status').textContent = skipChecklist.length ? `${done}/${skipChecklist.length} met` : '';
-}
-
-function toggleSkipCond(i) { skipChecklist[i].checked = !skipChecklist[i].checked; renderSkipChecklist(); }
 
 function skipPlannedRR() {
   const e = parseFloat(document.getElementById('s-entry').value);
@@ -1949,16 +1979,7 @@ function updateSkipVerdict() {
   document.getElementById('s-verdict').innerHTML = v ? `Verdict: <span class="badge ${v[1]}">${v[0]}</span>` : '';
 }
 
-async function handleSkipImages(fileList) {
-  if (!fileList || !fileList.length) return;
-  const remaining = MAX_IMAGES - skipImages.length;
-  if (remaining <= 0) { alert(`Max ${MAX_IMAGES} images per setup.`); return; }
-  const files = Array.from(fileList).filter(f => f.type.startsWith('image/')).slice(0, remaining);
-  for (const f of files) {
-    try { skipImages.push(await compressImage(f)); } catch(err) { console.error('Image error', err); }
-  }
-  renderSkipImages();
-}
+function handleSkipImages(fileList) { return addImageFiles(fileList, skipImages, renderSkipImages, 'setup'); }
 
 function renderSkipImages() {
   document.getElementById('s-img-count').textContent = skipImages.length ? `${skipImages.length}/${MAX_IMAGES}` : '';
@@ -2019,7 +2040,6 @@ function resetSkipForm() {
   document.getElementById('s-r-hint').style.display = 'none';
   setSkipOutcome('');
   calcSkipRR();
-  resetSkipChecklist();
   skipEditingId = null;
   document.getElementById('skip-edit-banner').classList.remove('on');
   document.getElementById('s-save-btn').textContent = 'Save setup';
@@ -2040,8 +2060,6 @@ function editSkip(id) {
   document.getElementById('s-tp').value = x.tp ?? '';
   document.getElementById('s-saw').value = x.saw || '';
   document.getElementById('s-lesson').value = x.lesson || '';
-  skipChecklist = x.checklist.length ? x.checklist.map(c => ({ ...c })) : defaultChecklist.map(text => ({ text, checked: false }));
-  renderSkipChecklist();
   skipImages = x.images.slice(); renderSkipImages();
   skipRManual = true;               // keep the saved R as-is
   setSkipOutcome(x.outcome);
@@ -2138,10 +2156,10 @@ function openSkipGallery(id, idx) {
 }
 
 function showTab(t) {
-  ['log','skip','history','calendar','stats','settings'].forEach((x,i) => {
+  ['log','skip','history','calendar','stats','settings'].forEach(x => {
     document.getElementById('tab-'+x).style.display = x===t ? 'block' : 'none';
-    document.querySelectorAll('.tab')[i].classList.toggle('active', x===t);
   });
+  document.querySelectorAll('.tab[data-tab]').forEach(el => el.classList.toggle('active', el.dataset.tab === t));
   if(t==='history') renderHistory();
   if(t==='calendar') renderCalendar();
   if(t==='stats') renderStats();
@@ -2518,9 +2536,7 @@ function renderCalendar() {
     if(t.actualRR!=null){byDate[t.date].rr+=t.actualRR;byDate[t.date].rrCount++;}
   });
   const monthTrades=filtered.filter(t=>{
-    if(!t.date)return false;
-    const d=new Date(t.date);
-    return d.getFullYear()===calYear&&d.getMonth()===calMonth;
+    return !!t.date && t.date.startsWith(`${calYear}-${String(calMonth+1).padStart(2,'0')}-`);
   });
   const monthPnl=monthTrades.reduce((a,t)=>a+(t.pnl||0),0);
   const monthWins=monthTrades.filter(t=>t.outcome==='win').length;
@@ -2725,7 +2741,6 @@ function renderStats() {
   const totalPnl=f.reduce((a,t)=>a+(t.pnl||0),0);
   const rrVals=f.filter(t=>t.actualRR).map(t=>t.actualRR);
   const avgRR=rrVals.length?(rrVals.reduce((a,b)=>a+b,0)/rrVals.length).toFixed(2):'—';
-  const fullChk=f.filter(t=>t.checklistFull).length;
   // Profit factor = gross profit / gross loss, on net P&L per trade
   const grossWin=f.reduce((a,t)=>a+Math.max(t.pnl||0,0),0);
   const grossLoss=f.reduce((a,t)=>a+Math.max(-(t.pnl||0),0),0);
@@ -2804,23 +2819,13 @@ async function importData(ev) {
     const incoming = Array.isArray(data) ? data : (data.trades || []);
     if (!incoming.length && !(data.skips && data.skips.length) && !(data.cashflows && data.cashflows.length)) { alert('Nothing to import in this file.'); return; }
     let n = 0;
-    for (const t of incoming) {
-      const id = (t && SAFE_ID.test(String(t.id))) ? String(t.id) : String(Date.now() + n);
-      await fb.setDoc(fb.doc(fbPaths.tradesCol, id), normalizeTrade(t));
-      n++;
-    }
-    if (Array.isArray(data.skips)) {
-      for (const x of data.skips) {
-        const sid = (x && SAFE_ID.test(String(x.id))) ? String(x.id) : String(Date.now() + n++);
-        await fb.setDoc(fb.doc(fbPaths.skipsCol, sid), normalizeSkip(x));
-      }
-    }
-    if (Array.isArray(data.cashflows)) {
-      for (const c of data.cashflows) {
-        const cid = (c && SAFE_ID.test(String(c.id))) ? String(c.id) : String(Date.now() + n++);
-        await fb.setDoc(fb.doc(fbPaths.cashCol, cid), normalizeCashflow(c));
-      }
-    }
+    const ops = [];
+    const docId = v => (v && SAFE_ID.test(String(v))) ? String(v) : String(Date.now() + ops.length);
+    for (const t of incoming) { ops.push({ ref: fb.doc(fbPaths.tradesCol, docId(t && t.id)), data: normalizeTrade(t) }); n++; }
+    for (const x of (Array.isArray(data.skips) ? data.skips : [])) ops.push({ ref: fb.doc(fbPaths.skipsCol, docId(x && x.id)), data: normalizeSkip(x) });
+    for (const c of (Array.isArray(data.cashflows) ? data.cashflows : [])) ops.push({ ref: fb.doc(fbPaths.cashCol, docId(c && c.id)), data: normalizeCashflow(c) });
+    setSyncStatus('', `Importing ${ops.length} items…`);
+    await commitInChunks(ops);
     if (Array.isArray(data.pairs)) { pairs = data.pairs.map(p => str(p, 20).toUpperCase()).filter(Boolean).slice(0, 50); }
     if (Array.isArray(data.defaultChecklist)) { defaultChecklist = data.defaultChecklist.map(t => str(t, 300)).filter(Boolean).slice(0, 50); }
     await saveSettings();
@@ -2839,72 +2844,13 @@ async function deleteAllTrades() {
   const sure = prompt(`This will permanently delete ALL ${trades.length} trades. Type DELETE to confirm.`);
   if (sure !== 'DELETE') return;
   try {
-    for (const t of trades) {
-      await fb.deleteDoc(fb.doc(fbPaths.tradesCol, t.id));
-    }
+    await commitInChunks(trades.map(t => ({ ref: fb.doc(fbPaths.tradesCol, t.id), data: null })));
     alert('All trades deleted.');
   } catch(err) {
     alert('Delete failed: ' + err.message);
   }
 }
 
-// Expose to onclick handlers
-window.showTab = showTab;
-window.calcRR = calcRR;
-window.setOutcome = setOutcome;
-window.saveTrade = saveTrade;
-window.toggleCondition = toggleCondition;
-window.addCondition = addCondition;
-window.removeCondition = removeCondition;
-window.addPair = addPair;
-window.removePair = removePair;
-window.addDefaultCondition = addDefaultCondition;
-window.removeDefaultCondition = removeDefaultCondition;
-window.setHistPair = setHistPair;
-window.setCalPair = setCalPair;
-window.setStatsPair = setStatsPair;
-window.toggleCosts = toggleCosts;
-window.deleteTrade = deleteTrade;
-window.editTrade = editTrade;
-window.toggleHistRow = toggleHistRow;
-window.setHistView = setHistView;
-window.cancelEdit = cancelEdit;
-window.changeMonth = changeMonth;
-window.showDayDetail = showDayDetail;
-window.exportData = exportData;
-window.importData = importData;
-window.deleteAllTrades = deleteAllTrades;
-window.addPartial = addPartial;
-window.removePartial = removePartial;
-window.updatePartial = updatePartial;
-window.handleImages = handleImages;
-window.removeImage = removeImage;
-window.openLightbox = openLightbox;
-window.openLightboxGallery = openLightboxGallery;
-window.lbStep = lbStep;
-window.closeLightbox = closeLightbox;
-window.doLogin = doLogin;
-window.doSignOut = doSignOut;
-window.onRModeChange = onRModeChange;
-window.updateREffective = updateREffective;
-window.saveRSettings = saveRSettings;
-window.updateRRPreview = updateRRPreview;
-window.toggleNotes = toggleNotes;
-window.addNote = addNote;
-window.addCashflow = addCashflow;
-window.deleteCashflow = deleteCashflow;
-window.goToCashflows = goToCashflows;
-window.calcSkipRR = calcSkipRR;
-window.setSkipOutcome = setSkipOutcome;
-window.toggleSkipCond = toggleSkipCond;
-window.handleSkipImages = handleSkipImages;
-window.removeSkipImage = removeSkipImage;
-window.saveSkip = saveSkip;
-window.resetSkipForm = resetSkipForm;
-window.editSkip = editSkip;
-window.deleteSkip = deleteSkip;
-window.openSkipGallery = openSkipGallery;
-Object.defineProperty(window, 'skipImages', { get: () => skipImages });
 // Expose images array so inline thumbnail onclicks in the log form can reference it
 Object.defineProperty(window, 'currentImages', { get: () => currentImages });
 
