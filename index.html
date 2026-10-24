@@ -159,6 +159,19 @@ textarea{resize:vertical;min-height:56px}
 .bi{background:var(--bg-info);color:var(--text-info)}
 .bn{background:var(--bg-secondary);color:var(--text-secondary)}
 .skip-meta{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}
+.bal-chart{position:relative;width:100%;height:230px;touch-action:pan-y}
+.bal-chart svg{display:block;overflow:visible;outline:none}
+.bal-chart .grid line{stroke:var(--border);stroke-width:1}
+.bal-chart .axis text{fill:var(--text-secondary);font-size:11px;font-family:var(--mono)}
+.bal-chart .line{fill:none;stroke:var(--text-info);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.bal-chart .base{stroke:var(--border-md);stroke-width:1;stroke-dasharray:3 3}
+.bal-chart .cf-dot{fill:var(--bg-primary);stroke:var(--text-secondary);stroke-width:2}
+.bal-chart .hair{stroke:var(--text-secondary);stroke-width:1;opacity:.5}
+.bal-chart .hdot{fill:var(--text-info);stroke:var(--bg-primary);stroke-width:2}
+.bal-tip{position:absolute;pointer-events:none;background:var(--bg-primary);border:0.5px solid var(--border-md);border-radius:var(--radius-md);padding:6px 9px;font-size:12px;box-shadow:0 4px 12px rgba(0,0,0,0.12);white-space:nowrap;display:none;z-index:2}
+.bal-tip .tv{font-family:var(--mono);font-weight:500;font-size:13px;color:var(--text-primary)}
+.bal-tip .tl{color:var(--text-secondary);margin-top:1px}
+.bal-empty{height:100%;display:flex;align-items:center;justify-content:center;color:var(--text-secondary);font-size:13px}
 .view-switch{display:inline-flex;background:var(--bg-secondary);border:0.5px solid var(--border);border-radius:99px;padding:3px;margin-bottom:12px}
 .view-switch button{border:none;background:transparent;font-family:var(--font);font-size:13px;color:var(--text-secondary);padding:5px 14px;border-radius:99px;cursor:pointer}
 .view-switch button.on{background:var(--bg-primary);color:var(--text-primary);font-weight:500;box-shadow:0 1px 2px rgba(0,0,0,0.08)}
@@ -188,7 +201,7 @@ textarea{resize:vertical;min-height:56px}
 .notes.collapsed .nb-caret{transform:rotate(-90deg)}
 .notes.collapsed .notes-list{display:none}
 .notes-list{display:flex;flex-direction:column;gap:12px;overflow-y:auto;padding:6px 8px 12px;margin:0 -8px}
-.notes-empty{font-size:12px;color:var(--text-secondary);text-align:right;padding:2px 4px}
+.notes-empty{font-size:12px;color:var(--text-secondary);align-self:flex-end;padding:4px 10px;background:var(--bg-primary);border:0.5px solid var(--border);border-radius:99px;box-shadow:0 2px 8px rgba(0,0,0,0.08)}
 .note{--rot:1deg;background:#fff3a0;color:#3a3410;border-radius:3px;box-shadow:0 6px 16px rgba(0,0,0,0.16),0 1px 3px rgba(0,0,0,0.1);transform:rotate(var(--rot));transition:transform .15s;flex-shrink:0}
 .note:nth-child(even){--rot:-1deg}
 .note:hover,.note:focus-within{transform:rotate(0deg)}
@@ -502,6 +515,13 @@ textarea{resize:vertical;min-height:56px}
       <label class="cost-toggle"><input type="checkbox" id="stats-cost-toggle" onchange="toggleCosts(this.checked)"> Show costs</label>
     </div>
     <div class="card">
+      <div class="sec-title">
+        <span id="bal-chart-title">Account balance</span>
+        <span id="bal-chart-now" style="font-size:13px;font-family:var(--mono);color:var(--text-primary);text-transform:none;letter-spacing:0"></span>
+      </div>
+      <div class="bal-chart" id="bal-chart"></div>
+    </div>
+    <div class="card">
       <div class="sec-title">Performance</div>
       <div class="metric-row" id="stats-metrics"></div>
     </div>
@@ -680,6 +700,8 @@ let skipOutcome = '';
 let skipEditingId = null;
 let skipRManual = false;
 let unsubCash = null;
+let balanceTimeline = [];   // [{v, date, label, kind}] account balance after each event
+let timelineIsBalance = false;
 let currentBalance = null;
 let currentCredit = 0; // broker credit, tracked apart from balance // starting balance + all net P&L (null if no starting balance set)
 let unsubNotes = null;
@@ -1635,10 +1657,19 @@ function recomputeDerived() {
 
   let bal = (start > 0) ? start : (cashflows.some(c => !isCredit(c)) ? 0 : null);
   let credit = 0;
+  // Chart timeline: real balance if we know it, otherwise cumulative P&L from 0
+  timelineIsBalance = bal != null;
+  let cum = 0;
+  const firstDate = events.length ? (events[0].c || events[0].t).date : '';
+  balanceTimeline = [{ v: timelineIsBalance ? bal : 0, date: firstDate, label: timelineIsBalance ? 'Starting balance' : 'Start', kind: 's' }];
   for (const e of events) {
     if (e.kind === 'c') {
       if (isCredit(e.c)) { credit += creditSigned(e.c); e.c.creditAfter = credit; }
-      else bal = (bal || 0) + cashSigned(e.c);
+      else {
+        bal = (bal || 0) + cashSigned(e.c);
+        const amt = cashSigned(e.c);
+        balanceTimeline.push({ v: bal, date: e.c.date, label: (amt >= 0 ? 'Deposit +' : 'Withdraw -') + fmtMoney(Math.abs(amt)), kind: 'c' });
+      }
       e.c.balanceAfter = bal;
       continue;
     }
@@ -1652,6 +1683,9 @@ function recomputeDerived() {
     if (R && t.pnl != null) t.actualRR = Math.round(t.pnl / R * 100) / 100;
     if (bal != null) bal += (t.pnl || 0);
     t.balanceAfter = bal;
+    cum += (t.pnl || 0);
+    const p = t.pnl || 0;
+    balanceTimeline.push({ v: timelineIsBalance ? bal : cum, date: t.date, label: `${t.pair || ''} ${t.dir || ''} ${p >= 0 ? '+' : '-'}${fmtMoney(Math.abs(p))}`.replace(/\s+/g, ' ').trim(), kind: 't' });
   }
   currentBalance = bal;
   currentCredit = credit;
@@ -2526,6 +2560,131 @@ function showDayDetail(ds) {
     </div>`).join('');
 }
 
+// ===== Balance chart =====
+function niceTicks(min, max, count) {
+  if (min === max) { const pad = Math.abs(min) * 0.05 || 1; min -= pad; max += pad; }
+  const span = max - min;
+  const raw = span / count;
+  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const step = [1, 2, 2.5, 5, 10].map(m => m * mag).find(st => st >= raw);
+  const lo = Math.floor(min / step) * step, hi = Math.ceil(max / step) * step;
+  const ticks = [];
+  for (let v = lo; v <= hi + step / 2; v += step) ticks.push(Math.round(v * 1e6) / 1e6);
+  return ticks;
+}
+
+function fmtAxisMoney(v) {
+  const a = Math.abs(v), sign = v < 0 ? '-' : '';
+  if (a >= 1e6) return sign + '$' + (a / 1e6).toFixed(a >= 1e7 ? 0 : 1) + 'M';
+  if (a >= 1e4) return sign + '$' + (a / 1e3).toFixed(0) + 'k';
+  if (a >= 1e3) return sign + '$' + (a / 1e3).toFixed(1) + 'k';
+  return sign + '$' + Math.round(a);
+}
+
+function chartSeries() {
+  if (activeStatsPair !== 'All') {
+    let cum = 0;
+    const pts = [{ v: 0, date: '', label: 'Start', kind: 's' }];
+    for (const t of chronoTrades()) {
+      if (t.pair !== activeStatsPair) continue;
+      const p = t.pnl || 0; cum += p;
+      pts.push({ v: cum, date: t.date, label: `${t.pair} ${t.dir || ''} ${p >= 0 ? '+' : '-'}${fmtMoney(Math.abs(p))}`.replace(/\s+/g, ' ').trim(), kind: 't' });
+    }
+    if (pts.length > 1) pts[0].date = pts[1].date;
+    return { title: 'Cumulative P&L · ' + activeStatsPair, pts, signed: true };
+  }
+  return timelineIsBalance
+    ? { title: 'Account balance', pts: balanceTimeline, signed: false }
+    : { title: 'Cumulative P&L', pts: balanceTimeline, signed: true };
+}
+
+function renderBalanceChart() {
+  const box = document.getElementById('bal-chart');
+  if (!box) return;
+  const { title, pts, signed } = chartSeries();
+  document.getElementById('bal-chart-title').textContent = title;
+  const last = pts.length ? pts[pts.length - 1].v : null;
+  const nowEl = document.getElementById('bal-chart-now');
+  nowEl.textContent = last == null ? '' : (signed && last > 0 ? '+' : '') + fmtMoney(last);
+  nowEl.style.color = signed && last != null ? rColor(last) : 'var(--text-primary)';
+
+  if (pts.length < 2) {
+    box.innerHTML = '<div class="bal-empty">Log a trade to see the curve</div>';
+    return;
+  }
+
+  const W = Math.max(box.clientWidth, 260), H = box.clientHeight || 230;
+  const padL = 52, padR = 10, padT = 10, padB = 24;
+  const vals = pts.map(p => p.v);
+  const ticks = niceTicks(Math.min(...vals), Math.max(...vals), 4);
+  const yMin = ticks[0], yMax = ticks[ticks.length - 1];
+  const n = pts.length;
+  const x = i => padL + (n === 1 ? 0 : i * (W - padL - padR) / (n - 1));
+  const y = v => padT + (yMax - v) / (yMax - yMin || 1) * (H - padT - padB);
+
+  // Date labels: first, middle, last (skip repeats)
+  const xIdx = [...new Set([0, Math.floor((n - 1) / 2), n - 1])];
+  const shortDate = d => d ? d.slice(5).replace('-', '/') : '';
+  const path = pts.map((p, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(p.v).toFixed(1)).join(' ');
+  const baseV = pts[0].v;
+
+  box.innerHTML = `
+    <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" tabindex="0" role="img" aria-label="${escapeHtml(title)} chart">
+      <g class="grid">${ticks.map(t => `<line x1="${padL}" x2="${W - padR}" y1="${y(t).toFixed(1)}" y2="${y(t).toFixed(1)}"/>`).join('')}</g>
+      <g class="axis">
+        ${ticks.map(t => `<text x="${padL - 8}" y="${(y(t) + 4).toFixed(1)}" text-anchor="end">${fmtAxisMoney(t)}</text>`).join('')}
+        ${xIdx.map(i => `<text x="${x(i).toFixed(1)}" y="${H - 6}" text-anchor="${i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'}">${escapeHtml(shortDate(pts[i].date))}</text>`).join('')}
+      </g>
+      ${baseV >= yMin && baseV <= yMax ? `<line class="base" x1="${padL}" x2="${W - padR}" y1="${y(baseV).toFixed(1)}" y2="${y(baseV).toFixed(1)}"/>` : ''}
+      <path class="line" d="${path}"/>
+      ${pts.map((p, i) => p.kind === 'c' ? `<circle class="cf-dot" r="4" cx="${x(i).toFixed(1)}" cy="${y(p.v).toFixed(1)}"/>` : '').join('')}
+      <line class="hair" id="bal-hair" y1="${padT}" y2="${H - padB}" style="display:none"/>
+      <circle class="hdot" id="bal-hdot" r="5" style="display:none"/>
+      <rect id="bal-hit" x="${padL - 8}" y="0" width="${W - padL - padR + 16}" height="${H}" fill="transparent"/>
+    </svg>
+    <div class="bal-tip" id="bal-tip"><div class="tv"></div><div class="tl"></div></div>`;
+
+  const svg = box.querySelector('svg'), hair = box.querySelector('#bal-hair'), dot = box.querySelector('#bal-hdot');
+  const tip = box.querySelector('#bal-tip'), hit = box.querySelector('#bal-hit');
+  let cur = -1;
+  const show = i => {
+    cur = Math.max(0, Math.min(n - 1, i));
+    const p = pts[cur], px = x(cur), py = y(p.v);
+    hair.setAttribute('x1', px); hair.setAttribute('x2', px); hair.style.display = '';
+    dot.setAttribute('cx', px); dot.setAttribute('cy', py); dot.style.display = '';
+    tip.querySelector('.tv').textContent = (signed && p.v > 0 ? '+' : '') + fmtMoney(p.v);
+    tip.querySelector('.tl').textContent = [p.date, p.label].filter(Boolean).join(' · ');
+    tip.style.display = 'block';
+    const tw = tip.offsetWidth, th = tip.offsetHeight;
+    let left = px + 12; if (left + tw > W) left = px - tw - 12;
+    let top = py - th - 10; if (top < 0) top = py + 12;
+    tip.style.left = Math.max(0, left) + 'px'; tip.style.top = top + 'px';
+  };
+  const hide = () => { hair.style.display = 'none'; dot.style.display = 'none'; tip.style.display = 'none'; cur = -1; };
+  const idxAt = clientX => {
+    const r = svg.getBoundingClientRect();
+    const px = (clientX - r.left) * (W / r.width);
+    return Math.round((px - padL) / ((W - padL - padR) / (n - 1)));
+  };
+  hit.addEventListener('pointermove', e => show(idxAt(e.clientX)));
+  hit.addEventListener('pointerdown', e => show(idxAt(e.clientX)));
+  hit.addEventListener('pointerleave', hide);
+  svg.addEventListener('focus', () => show(n - 1));
+  svg.addEventListener('blur', hide);
+  svg.addEventListener('keydown', e => {
+    if (e.key === 'ArrowLeft') { show(cur - 1); e.preventDefault(); }
+    if (e.key === 'ArrowRight') { show(cur + 1); e.preventDefault(); }
+  });
+}
+
+let _balResize = null;
+window.addEventListener('resize', () => {
+  clearTimeout(_balResize);
+  _balResize = setTimeout(() => {
+    if (document.getElementById('tab-stats').style.display !== 'none') renderBalanceChart();
+  }, 150);
+});
+
 function renderStats() {
   buildFilter('stats-filter',activeStatsPair,'setStatsPair');
   const f=activeStatsPair==='All'?trades:trades.filter(t=>t.pair===activeStatsPair);
@@ -2535,6 +2694,12 @@ function renderStats() {
   const rrVals=f.filter(t=>t.actualRR).map(t=>t.actualRR);
   const avgRR=rrVals.length?(rrVals.reduce((a,b)=>a+b,0)/rrVals.length).toFixed(2):'—';
   const fullChk=f.filter(t=>t.checklistFull).length;
+  // Profit factor = gross profit / gross loss, on net P&L per trade
+  const grossWin=f.reduce((a,t)=>a+Math.max(t.pnl||0,0),0);
+  const grossLoss=f.reduce((a,t)=>a+Math.max(-(t.pnl||0),0),0);
+  const pf=grossLoss>0?grossWin/grossLoss:(grossWin>0?Infinity:null);
+  const pfText=pf==null?'—':(pf===Infinity?'∞':pf.toFixed(2));
+  const pfColor=pf==null?'var(--text-primary)':(pf>=1?'var(--text-success)':'var(--text-danger)');
   // Cost aggregates
   const totalComm=f.reduce((a,t)=>a+(t.commission||0),0);
   const totalSwap=f.reduce((a,t)=>a+(t.swap||0),0);
@@ -2553,6 +2718,7 @@ function renderStats() {
     <div class="metric"><div class="mval">${total}</div><div class="mlbl">Total trades</div></div>
     <div class="metric"><div class="mval">${total?Math.round(wins/total*100):0}%</div><div class="mlbl">Win rate</div></div>
     <div class="metric"><div class="mval" style="color:${totalPnl>=0?'var(--text-success)':'var(--text-danger)'}">${totalPnl>=0?'+':''}$${totalPnl.toFixed(2)}</div><div class="mlbl">Net P&L</div></div>
+    <div class="metric"><div class="mval" style="color:${pfColor}">${pfText}</div><div class="mlbl">Profit factor</div></div>
     ${currentBalance!=null?`<div class="metric"><div class="mval">${fmtMoney(currentBalance)}</div><div class="mlbl">Balance</div></div>`:''}
     <div class="metric"><div class="mval">${avgRR}</div><div class="mlbl">Avg RR</div></div>
     <div class="metric"><div class="mval">${total?Math.round(fullChk/total*100):0}%</div><div class="mlbl">Full checklist</div></div>
@@ -2580,6 +2746,7 @@ function renderStats() {
       <span style="color:var(--text-secondary)">${pt.length}t · ${Math.round(pw/pt.length*100)}% win · <b style="color:${pp>=0?'var(--text-success)':'var(--text-danger)'}">${pp>=0?'+':''}$${pp.toFixed(2)}</b></span>
     </div>`;
   }).join(''):'<div class="empty">No trades logged yet</div>';
+  renderBalanceChart();
   renderSkipSummary();
 }
 
