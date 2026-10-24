@@ -153,7 +153,12 @@ textarea{resize:vertical;min-height:56px}
 .cost-toggle input{accent-color:var(--text-info);width:14px;height:14px;margin:0}
 .filter-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:1rem}
 .filter-row .pair-filter{margin-bottom:0;flex:1;min-width:0}
-.quote{font-size:12px;font-style:italic;color:var(--text-secondary);margin:2px 0 10px;line-height:1.5}
+.title-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:3px}
+.title-row h1{margin-bottom:0}
+.sync{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary)}
+.app-footer{display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-top:2rem;padding-top:1rem;border-top:0.5px solid var(--border)}
+.app-footer .signout-btn{margin-left:0}
+.quote{font-size:12px;font-style:italic;color:var(--text-secondary);margin:2px 0 1.25rem;line-height:1.5}
 .quote span{font-style:normal;opacity:.7}
 .sbtn.u{background:var(--bg-info);color:var(--text-info);border-color:var(--text-info)}
 .bi{background:var(--bg-info);color:var(--text-info)}
@@ -240,15 +245,11 @@ textarea{resize:vertical;min-height:56px}
 </div>
 
 <div class="container">
-  <h1>Trade journal</h1>
+  <div class="title-row">
+    <h1>Trade journal</h1>
+    <span class="sync"><span class="sync-dot" id="sync-dot"></span><span id="sync-status">Connecting…</span></span>
+  </div>
   <p class="quote">"A genius is the man who can do the average thing when everyone around him is losing his mind." <span>— Napoleon</span></p>
-  <p class="sub">
-    <span class="sync-dot" id="sync-dot"></span>
-    <span id="sync-status">Connecting…</span>
-    <span class="bal-pill" id="bal-pill" style="display:none" onclick="goToCashflows()" title="Deposits & withdrawals"></span>
-    <span class="user-pill" id="user-pill" style="display:none"></span>
-    <button class="signout-btn" id="signout-btn" onclick="doSignOut()" style="display:none">Sign out</button>
-  </p>
 
   <div class="tabs">
     <div class="tab active" onclick="showTab('log')">Log trade</div>
@@ -613,6 +614,11 @@ textarea{resize:vertical;min-height:56px}
       <button class="danger-btn" onclick="deleteAllTrades()">Delete all trades</button>
     </div>
   </div>
+
+  <div class="app-footer">
+    <span class="user-pill" id="user-pill" style="display:none"></span>
+    <button class="signout-btn" id="signout-btn" onclick="doSignOut()" style="display:none">Sign out</button>
+  </div>
 </div>
 
 <!-- Sticky notes (shown after sign-in) -->
@@ -709,11 +715,15 @@ let notes = [];
 let noteTimers = {};
 let pendingNoteFocus = null;
 
+let _syncRevert = null;
 function setSyncStatus(state, text) {
   const dot = document.getElementById('sync-dot');
   const lbl = document.getElementById('sync-status');
   dot.className = 'sync-dot' + (state==='ok'?' ok':state==='err'?' err':'');
   lbl.textContent = text;
+  // Confirmations like "Trade saved" show briefly, then settle back to "Synced"
+  clearTimeout(_syncRevert);
+  if (state === 'ok' && text !== 'Synced') _syncRevert = setTimeout(() => { lbl.textContent = 'Synced'; }, 2500);
 }
 
 window.addEventListener('fb-ready', () => {
@@ -788,7 +798,7 @@ async function onSignedIn(user) {
       qs.forEach(d => trades.push({ ...normalizeTrade(d.data()), id: d.id }));
       trades.sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
       recomputeDerived();
-      setSyncStatus('ok', `Synced · ${trades.length} trade${trades.length===1?'':'s'}`);
+      setSyncStatus('ok', 'Synced');
       if (document.getElementById('tab-history').style.display !== 'none') renderHistory();
       if (document.getElementById('tab-calendar').style.display !== 'none') renderCalendar();
       if (document.getElementById('tab-stats').style.display !== 'none') renderStats();
